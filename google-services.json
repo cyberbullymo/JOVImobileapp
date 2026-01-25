@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "502037763802",
+    "project_id": "jovi-10873",
+    "storage_bucket": "jovi-10873.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:502037763802:android:bf50f6089eb751c144b7e3",
+        "android_client_info": {
+          "package_name": "com.joviapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAByqoRWGL0m-xiv2dowAWIKXJX_XFNtnM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
