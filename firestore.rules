@@ -1,0 +1,234 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // HELPER FUNCTIONS
+    // =========================================================================
+
+    // Check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if the user owns the resource
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Check if user is an admin (for Cloud Functions)
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.admin == true;
+    }
+
+    // Check if a field exists and is not null
+    function fieldExists(field) {
+      return field != null;
+    }
+
+    // Validate gig source
+    function isValidGigSource(source) {
+      return source in ['user-generated', 'craigslist', 'indeed', 'school-board', 'facebook'];
+    }
+
+    // Check if gig is user-generated
+    function isUserGeneratedGig() {
+      return request.resource.data.source == 'user-generated';
+    }
+
+    // Check if gig is aggregated (not user-generated)
+    function isAggregatedGig() {
+      return request.resource.data.source != 'user-generated';
+    }
+
+    // Validate quality score is within range
+    function isValidQualityScore(score) {
+      return score >= 1 && score <= 10;
+    }
+
+    // =========================================================================
+    // USERS COLLECTION
+    // =========================================================================
+
+    match /users/{userId} {
+      // Users can read their own profile or any public profile
+      allow read: if isAuthenticated();
+
+      // Users can only create their own profile
+      allow create: if isOwner(userId);
+
+      // Users can only update their own profile
+      allow update: if isOwner(userId);
+
+      // Users can only delete their own profile
+      allow delete: if isOwner(userId);
+    }
+
+    // =========================================================================
+    // GIGS COLLECTION
+    // =========================================================================
+
+    match /gigs/{gigId} {
+      // Allow read if gig is active OR if user is the owner
+      allow read: if resource.data.isActive == true
+                  || (isAuthenticated() && resource.data.postedBy == request.auth.uid)
+                  || isAdmin();
+
+      // User-generated gigs: authenticated users can create their own gigs
+      allow create: if isAuthenticated()
+                    && isUserGeneratedGig()
+                    && request.resource.data.postedBy == request.auth.uid
+                    && fieldExists(request.resource.data.postedBy)
+                    && fieldExists(request.resource.data.title)
+                    && fieldExists(request.resource.data.description)
+                    && fieldExists(request.resource.data.location)
+                    && fieldExists(request.resource.data.gigType)
+                    && fieldExists(request.resource.data.profession)
+                    && fieldExists(request.resource.data.payRange)
+                    && fieldExists(request.resource.data.source)
+                    && isValidGigSource(request.resource.data.source);
+
+      // Aggregated gigs: only admins (Cloud Functions) can create
+      allow create: if isAdmin()
+                    && isAggregatedGig()
+                    && request.resource.data.postedBy == null
+                    && fieldExists(request.resource.data.sourceUrl)
+                    && fieldExists(request.resource.data.externalId)
+                    && isValidGigSource(request.resource.data.source)
+                    && (!fieldExists(request.resource.data.qualityScore)
+                        || isValidQualityScore(request.resource.data.qualityScore));
+
+      // Only gig owner can update user-generated gigs
+      allow update: if isAuthenticated()
+                    && resource.data.postedBy == request.auth.uid
+                    && resource.data.source == 'user-generated'
+                    // Cannot change source or postedBy after creation
+                    && request.resource.data.source == resource.data.source
+                    && request.resource.data.postedBy == resource.data.postedBy;
+
+      // Admins can update any gig (for aggregated gigs and moderation)
+      allow update: if isAdmin();
+
+      // Only gig owner can delete user-generated gigs
+      allow delete: if isAuthenticated()
+                    && resource.data.postedBy == request.auth.uid
+                    && resource.data.source == 'user-generated';
+
+      // Admins can delete any gig
+      allow delete: if isAdmin();
+    }
+
+    // =========================================================================
+    // APPLICATIONS COLLECTION
+    // =========================================================================
+
+    match /applications/{applicationId} {
+      // Applicants can read their own applications
+      // Gig owners can read applications for their gigs
+      allow read: if isAuthenticated()
+                  && (resource.data.applicantId == request.auth.uid
+                      || get(/databases/$(database)/documents/gigs/$(resource.data.gigId)).data.postedBy == request.auth.uid);
+
+      // Authenticated users can create applications
+      allow create: if isAuthenticated()
+                    && request.resource.data.applicantId == request.auth.uid;
+
+      // Applicants can update (withdraw) their own applications
+      allow update: if isAuthenticated()
+                    && resource.data.applicantId == request.auth.uid;
+
+      // Gig owners can update application status
+      allow update: if isAuthenticated()
+                    && get(/databases/$(database)/documents/gigs/$(resource.data.gigId)).data.postedBy == request.auth.uid;
+
+      // Applicants can delete their own applications
+      allow delete: if isAuthenticated()
+                    && resource.data.applicantId == request.auth.uid;
+    }
+
+    // =========================================================================
+    // CONVERSATIONS COLLECTION
+    // =========================================================================
+
+    match /conversations/{conversationId} {
+      // Only participants can read conversations
+      allow read: if isAuthenticated()
+                  && request.auth.uid in resource.data.participants;
+
+      // Authenticated users can create conversations
+      allow create: if isAuthenticated()
+                    && request.auth.uid in request.resource.data.participants;
+
+      // Only participants can update conversations
+      allow update: if isAuthenticated()
+                    && request.auth.uid in resource.data.participants;
+
+      // Only participants can delete conversations
+      allow delete: if isAuthenticated()
+                    && request.auth.uid in resource.data.participants;
+    }
+
+    // =========================================================================
+    // MESSAGES COLLECTION
+    // =========================================================================
+
+    match /messages/{messageId} {
+      // Users can read messages from conversations they're part of
+      allow read: if isAuthenticated()
+                  && request.auth.uid in get(/databases/$(database)/documents/conversations/$(resource.data.conversationId)).data.participants;
+
+      // Users can create messages in conversations they're part of
+      allow create: if isAuthenticated()
+                    && request.resource.data.senderId == request.auth.uid;
+
+      // Messages cannot be updated (immutable)
+      allow update: if false;
+
+      // Only sender can delete their messages
+      allow delete: if isAuthenticated()
+                    && resource.data.senderId == request.auth.uid;
+    }
+
+    // =========================================================================
+    // NOTIFICATIONS COLLECTION
+    // =========================================================================
+
+    match /notifications/{notificationId} {
+      // Users can only read their own notifications
+      allow read: if isAuthenticated()
+                  && resource.data.userId == request.auth.uid;
+
+      // Only system (Cloud Functions with admin) can create notifications
+      allow create: if isAdmin();
+
+      // Users can update their own notifications (mark as read)
+      allow update: if isAuthenticated()
+                    && resource.data.userId == request.auth.uid;
+
+      // Users can delete their own notifications
+      allow delete: if isAuthenticated()
+                    && resource.data.userId == request.auth.uid;
+    }
+
+    // =========================================================================
+    // PORTFOLIO COLLECTION
+    // =========================================================================
+
+    match /portfolio/{itemId} {
+      // Portfolio items are public
+      allow read: if true;
+
+      // Users can create their own portfolio items
+      allow create: if isAuthenticated()
+                    && request.resource.data.userId == request.auth.uid;
+
+      // Users can update their own portfolio items
+      allow update: if isAuthenticated()
+                    && resource.data.userId == request.auth.uid;
+
+      // Users can delete their own portfolio items
+      allow delete: if isAuthenticated()
+                    && resource.data.userId == request.auth.uid;
+    }
+  }
+}

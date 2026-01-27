@@ -1,0 +1,51 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidImageType() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function isUnder5MB() {
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // User profile images
+    match /users/{userId}/profile/{fileName} {
+      allow read: if true;
+      allow write: if isOwner(userId) && isValidImageType() && isUnder5MB();
+    }
+
+    // User portfolio images
+    match /users/{userId}/portfolio/{fileName} {
+      allow read: if true;
+      allow write: if isOwner(userId) && isValidImageType() && isUnder5MB();
+    }
+
+    // Business images (for Founders)
+    match /businesses/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if isOwner(userId) && isValidImageType() && isUnder5MB();
+    }
+
+    // Gig images
+    match /gigs/{gigId}/{fileName} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isValidImageType() && isUnder5MB();
+    }
+
+    // Message attachments
+    match /messages/{conversationId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isUnder5MB();
+    }
+  }
+}

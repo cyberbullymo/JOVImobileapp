@@ -8,7 +8,12 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "migrate:gigs": "ts-node --esm --project scripts/tsconfig.json scripts/migrateGigs.ts",
+    "migrate:gigs:dry-run": "ts-node --esm --project scripts/tsconfig.json scripts/migrateGigs.ts dry-run",
+    "migrate:gigs:validate": "ts-node --esm --project scripts/tsconfig.json scripts/migrateGigs.ts validate",
+    "firebase:deploy:rules": "firebase deploy --only firestore:rules",
+    "firebase:deploy:indexes": "firebase deploy --only firestore:indexes"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -44,9 +49,12 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
+    "@types/node": "^22.10.0",
     "@types/react": "~19.1.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
+    "firebase-admin": "^13.0.2",
+    "ts-node": "^10.9.2",
     "typescript": "~5.9.2"
   },
   "private": true

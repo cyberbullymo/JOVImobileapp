@@ -75,22 +75,92 @@ export type UserProfile = FutureProProfile | LicensedProProfile | FounderProfile
 // GIG TYPES
 // ============================================================================
 
-export type GigType = 'Full-time' | 'Part-time' | 'Freelance' | 'Internship' | 'Apprenticeship';
+// Extended gig types to support aggregated gigs from various sources
+export type GigType =
+  | 'booth-rental'
+  | 'freelance'
+  | 'full-time'
+  | 'part-time'
+  | 'internship'
+  | 'apprenticeship'
+  | 'commission';
+
+// Legacy gig type for backward compatibility
+export type LegacyGigType = 'Full-time' | 'Part-time' | 'Freelance' | 'Internship' | 'Apprenticeship';
+
 export type GigStatus = 'Open' | 'Closed' | 'Filled';
 
+// Source of the gig posting
+export type GigSource =
+  | 'user-generated'
+  | 'craigslist'
+  | 'indeed'
+  | 'school-board'
+  | 'facebook';
+
+// Profession types supported
+export type GigProfession =
+  | 'hairstylist'
+  | 'nail-tech'
+  | 'esthetician'
+  | 'makeup-artist'
+  | 'barber'
+  | 'lash-tech';
+
+// Pay rate types
+export type PayType =
+  | 'hourly'
+  | 'per-service'
+  | 'salary'
+  | 'commission'
+  | 'booth-rental';
+
+// Location with geocoding support
+export interface GigLocation {
+  city: string;
+  state: string;
+  lat?: number;
+  lng?: number;
+}
+
+// Pay range structure
+export interface PayRange {
+  min: number;
+  max: number;
+  type: PayType;
+}
+
+// Main Gig interface - supports both user-generated and aggregated gigs
 export interface Gig {
+  // Core identifiers
   id: string;
-  founderId: string;
-  founderProfile: FounderProfile;
+  gigId: string; // Alias for id, used in some contexts
+
+  // Basic gig information
   title: string;
   description: string;
-  type: GigType;
-  specialties: string[];
-  location: {
-    city: string;
-    state: string;
-  };
-  compensation: {
+  location: GigLocation;
+
+  // Poster information (null for aggregated gigs)
+  postedBy: string | null; // userId - null if aggregated
+  founderId?: string | null; // Alias for postedBy (backward compat)
+  founderProfile?: FounderProfile | null; // Denormalized founder data
+
+  // Timestamps
+  createdAt: Date;
+  lastUpdatedAt: Date;
+  updatedAt?: Date; // Alias for lastUpdatedAt (backward compat)
+  expiresAt: Date; // Auto-expiration date (30 days from creation)
+
+  // Gig classification
+  gigType: GigType;
+  type?: GigType | LegacyGigType; // Alias for gigType (backward compat)
+  profession: GigProfession[];
+  specialties?: string[]; // Alias for profession (backward compat)
+
+  // Compensation
+  payRange: PayRange;
+  compensation?: { // Backward compatibility
     type: 'Hourly' | 'Salary' | 'Commission' | 'Unpaid';
     amount?: number;
     range?: {
@@ -98,14 +168,73 @@ export interface Gig {
       max: number;
     };
   };
-  requirements: string[];
+
+  // Requirements
+  requirements?: string[];
   benefits?: string[];
   startDate?: Date;
-  status: GigStatus;
-  applicantCount: number;
-  createdAt: Date;
-  updatedAt: Date;
+
+  // Status
+  status?: GigStatus;
+  isActive: boolean; // Whether gig is visible in feed
+
+  // Aggregation fields
+  source: GigSource;
+  sourceUrl: string | null; // Original posting URL for aggregated gigs
+  externalId: string | null; // Unique ID from source platform for de-duplication
+
+  // Metrics
+  qualityScore: number; // 1-10, AI-generated rating for ranking
+  viewCount: number; // Tracking metric for gig visibility
+  applicationCount: number; // Tracking metric for conversion
+  applicantCount?: number; // Alias for applicationCount (backward compat)
 }
+
+// Type for creating a new user-generated gig
+export interface CreateUserGigInput {
+  title: string;
+  description: string;
+  location: GigLocation;
+  postedBy: string; // Required for user-generated
+  gigType: GigType;
+  profession: GigProfession[];
+  payRange: PayRange;
+  requirements?: string[];
+  benefits?: string[];
+  startDate?: Date;
+}
+
+// Type for creating a new aggregated gig
+export interface CreateAggregatedGigInput {
+  title: string;
+  description: string;
+  location: GigLocation;
+  gigType: GigType;
+  profession: GigProfession[];
+  payRange: PayRange;
+  source: Exclude<GigSource, 'user-generated'>;
+  sourceUrl: string; // Required for aggregated
+  externalId: string; // Required for aggregated
+  qualityScore?: number; // Defaults to 5
+  requirements?: string[];
+  benefits?: string[];
+}
+
+// Default values for new gigs
+export const GIG_DEFAULTS = {
+  qualityScore: 5,
+  isActive: true,
+  viewCount: 0,
+  applicationCount: 0,
+  expirationDays: 30,
+} as const;
+
+// Helper to calculate expiration date
+export const calculateExpiresAt = (createdAt: Date, days: number = GIG_DEFAULTS.expirationDays): Date => {
+  const expiresAt = new Date(createdAt);
+  expiresAt.setDate(expiresAt.getDate() + days);
+  return expiresAt;
+};
 
 // ============================================================================
 // APPLICATION TYPES
@@ -243,13 +372,17 @@ export interface ProfileFormData {
 export interface GigFormData {
   title: string;
   description: string;
-  type: GigType;
-  specialties: string[];
-  location: {
-    city: string;
-    state: string;
-  };
-  compensation: {
+  gigType: GigType;
+  profession: GigProfession[];
+  location: GigLocation;
+  payRange: PayRange;
+  requirements: string[];
+  benefits?: string[];
+  startDate?: Date;
+  // Legacy fields for backward compatibility
+  type?: GigType | LegacyGigType;
+  specialties?: string[];
+  compensation?: {
     type: 'Hourly' | 'Salary' | 'Commission' | 'Unpaid';
     amount?: number;
     range?: {
@@ -257,9 +390,6 @@ export interface GigFormData {
       max: number;
     };
   };
-  requirements: string[];
-  benefits?: string[];
-  startDate?: Date;
 }
 
 // ============================================================================
