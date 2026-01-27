@@ -13,7 +13,8 @@ import { theme } from '../components/design-system/theme/theme';
 import { useAuthStore } from '../store/authStore';
 
 // Import screens
-import LoginScreen from '../screens/auth/LoginScreen';
+import SignInScreen from '../screens/auth/SignInScreen';
+import SignUpScreen from '../screens/auth/SignUpScreen';
 import GigsScreen from '../screens/gigs/GigsScreen';
 import HomeScreen from '../screens/home/HomeScreen';
 import MessagesScreen from '../screens/messages/MessagesScreen';
@@ -38,7 +39,20 @@ const AuthNavigator = () => {
         headerShown: false,
         contentStyle: { backgroundColor: theme.colors.background.default },
       }}>
-      <AuthStack.Screen name="Login" component={LoginScreen} />
+      <AuthStack.Screen name="Login">
+        {(props) => (
+          <SignInScreen
+            onNavigateToSignUp={() => props.navigation.navigate('SignUp')}
+          />
+        )}
+      </AuthStack.Screen>
+      <AuthStack.Screen name="SignUp">
+        {(props) => (
+          <SignUpScreen
+            onNavigateToLogin={() => props.navigation.navigate('Login')}
+          />
+        )}
+      </AuthStack.Screen>
     </AuthStack.Navigator>
   );
 };
