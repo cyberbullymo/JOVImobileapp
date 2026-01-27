@@ -30,6 +30,7 @@ export const storage = getStorage(app);
 export const COLLECTIONS = {
   USERS: 'users',
   GIGS: 'gigs',
+  GIG_SOURCES: 'gigSources',
   APPLICATIONS: 'applications',
   CONVERSATIONS: 'conversations',
   MESSAGES: 'messages',

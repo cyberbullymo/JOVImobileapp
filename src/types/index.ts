@@ -90,8 +90,8 @@ export type LegacyGigType = 'Full-time' | 'Part-time' | 'Freelance' | 'Internshi
 
 export type GigStatus = 'Open' | 'Closed' | 'Filled';
 
-// Source of the gig posting
-export type GigSource =
+// Origin of the gig posting (where the gig came from)
+export type GigOrigin =
   | 'user-generated'
   | 'craigslist'
   | 'indeed'
@@ -179,7 +179,7 @@ export interface Gig {
   isActive: boolean; // Whether gig is visible in feed
 
   // Aggregation fields
-  source: GigSource;
+  source: GigOrigin;
   sourceUrl: string | null; // Original posting URL for aggregated gigs
   externalId: string | null; // Unique ID from source platform for de-duplication
 
@@ -212,7 +212,7 @@ export interface CreateAggregatedGigInput {
   gigType: GigType;
   profession: GigProfession[];
   payRange: PayRange;
-  source: Exclude<GigSource, 'user-generated'>;
+  source: Exclude<GigOrigin, 'user-generated'>;
   sourceUrl: string; // Required for aggregated
   externalId: string; // Required for aggregated
   qualityScore?: number; // Defaults to 5
@@ -234,6 +234,146 @@ export const calculateExpiresAt = (createdAt: Date, days: number = GIG_DEFAULTS.
   const expiresAt = new Date(createdAt);
   expiresAt.setDate(expiresAt.getDate() + days);
   return expiresAt;
+};
+
+// ============================================================================
+// GIG SOURCE TYPES (for aggregation tracking)
+// ============================================================================
+
+// Type of scraping mechanism
+export type GigSourceType = 'rss' | 'scraper' | 'api' | 'manual';
+
+// Platform the source belongs to
+export type GigSourcePlatform =
+  | 'craigslist'
+  | 'indeed'
+  | 'school-board'
+  | 'facebook'
+  | 'instagram';
+
+// Scraping frequency options
+export type ScrapingFrequency =
+  | 'hourly'
+  | 'every-6-hours'
+  | 'daily'
+  | 'weekly'
+  | 'manual';
+
+// Location for gig source
+export interface GigSourceLocation {
+  city: string;
+  state: string;
+  region: string; // e.g., "socal", "norcal", "midwest"
+}
+
+// Main GigSource interface for tracking external gig sources
+export interface GigSource {
+  // Identifiers
+  sourceId: string; // e.g., "craigslist-la-beauty"
+  name: string; // Human-readable name, e.g., "Craigslist LA - Beauty Services"
+
+  // Source configuration
+  url: string; // RSS feed or scraping endpoint URL
+  type: GigSourceType;
+  platform: GigSourcePlatform;
+  location: GigSourceLocation;
+
+  // Status
+  isActive: boolean; // Whether source is currently being scraped
+
+  // Scraping timestamps
+  lastScraped: Date | null; // Last scrape attempt
+  lastSuccess: Date | null; // Last successful scrape that found gigs
+  scrapingFrequency: ScrapingFrequency;
+
+  // Metrics
+  gigCount: number; // Current active gigs from this source
+  totalGigsScraped: number; // Lifetime total (includes expired/deleted)
+
+  // Error tracking
+  errorCount: number; // Consecutive failures (resets on success)
+  lastError: string | null; // Most recent error message
+
+  // Timestamps
+  createdAt: Date;
+  updatedAt: Date;
+
+  // Advanced metrics (optional)
+  averageGigQuality?: number; // Average qualityScore of gigs from this source
+  conversionRate?: number; // % of gigs that receive applications
+  deduplicationRate?: number; // % of scraped gigs that are duplicates
+}
+
+// Input for creating a new gig source
+export interface CreateGigSourceInput {
+  sourceId: string;
+  name: string;
+  url: string;
+  type: GigSourceType;
+  platform: GigSourcePlatform;
+  location: GigSourceLocation;
+  isActive?: boolean;
+  scrapingFrequency: ScrapingFrequency;
+}
+
+// Input for updating a gig source
+export interface UpdateGigSourceInput {
+  name?: string;
+  url?: string;
+  type?: GigSourceType;
+  isActive?: boolean;
+  scrapingFrequency?: ScrapingFrequency;
+  lastError?: string | null;
+}
+
+// Source health status for monitoring
+export type SourceHealthStatus = 'healthy' | 'warning' | 'critical' | 'inactive';
+
+// Source health summary
+export interface GigSourceHealth {
+  sourceId: string;
+  status: SourceHealthStatus;
+  lastScraped: Date | null;
+  errorCount: number;
+  gigCount: number;
+  isWithinExpectedFrequency: boolean;
+}
+
+// Constants for source health monitoring
+export const GIG_SOURCE_DEFAULTS = {
+  maxConsecutiveErrors: 3, // Auto-disable after this many failures
+  healthyErrorThreshold: 0,
+  warningErrorThreshold: 2,
+  criticalErrorThreshold: 3,
+} as const;
+
+// Helper to determine source health status
+export const getSourceHealthStatus = (source: GigSource): SourceHealthStatus => {
+  if (!source.isActive) return 'inactive';
+  if (source.errorCount >= GIG_SOURCE_DEFAULTS.criticalErrorThreshold) return 'critical';
+  if (source.errorCount >= GIG_SOURCE_DEFAULTS.warningErrorThreshold) return 'warning';
+  return 'healthy';
+};
+
+// Helper to check if source is within expected scraping frequency
+export const isWithinExpectedFrequency = (source: GigSource): boolean => {
+  if (!source.lastScraped) return false;
+
+  const now = new Date();
+  const lastScraped = source.lastScraped instanceof Date
+    ? source.lastScraped
+    : new Date(source.lastScraped);
+  const hoursSinceLastScrape = (now.getTime() - lastScraped.getTime()) / (1000 * 60 * 60);
+
+  const expectedHours: Record<ScrapingFrequency, number> = {
+    'hourly': 2, // Allow 1 hour buffer
+    'every-6-hours': 8,
+    'daily': 26, // Allow 2 hour buffer
+    'weekly': 170, // Allow 2 hour buffer
+    'manual': Infinity,
+  };
+
+  return hoursSinceLastScrape <= expectedHours[source.scrapingFrequency];
 };
 
 // ============================================================================

@@ -25,7 +25,7 @@ import {
 import { firestore, COLLECTIONS } from './config';
 import {
   Gig,
-  GigSource,
+  GigOrigin,
   GigType,
   GigProfession,
   GigLocation,
@@ -157,7 +157,7 @@ export const validateAggregatedGigInput = (input: CreateAggregatedGigInput): Val
   }
 
   // Aggregation-specific required fields
-  const validSources: GigSource[] = ['craigslist', 'indeed', 'school-board', 'facebook'];
+  const validSources: GigOrigin[] = ['craigslist', 'indeed', 'school-board', 'facebook'];
   if (!input.source || !validSources.includes(input.source)) {
     errors.push(`Invalid source. Must be one of: ${validSources.join(', ')}`);
   }
@@ -392,7 +392,7 @@ export const getGigById = async (gigId: string): Promise<Gig | null> => {
  * Find gig by external ID (for de-duplication)
  */
 export const findGigByExternalId = async (
-  source: GigSource,
+  source: GigOrigin,
   externalId: string
 ): Promise<Gig | null> => {
   const gigsRef = collection(firestore, COLLECTIONS.GIGS);
@@ -456,7 +456,7 @@ export const getActiveGigs = async (
 /**
  * Get gigs by source
  */
-export const getGigsBySource = async (source: GigSource): Promise<Gig[]> => {
+export const getGigsBySource = async (source: GigOrigin): Promise<Gig[]> => {
   const gigsRef = collection(firestore, COLLECTIONS.GIGS);
   const q = query(
     gigsRef,

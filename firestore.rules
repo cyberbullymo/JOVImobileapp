@@ -119,6 +119,31 @@ service cloud.firestore {
     }
 
     // =========================================================================
+    // GIG SOURCES COLLECTION (for aggregation tracking)
+    // =========================================================================
+
+    match /gigSources/{sourceId} {
+      // Public read access for monitoring dashboard and app
+      allow read: if true;
+
+      // Only admins (Cloud Functions) can create sources
+      allow create: if isAdmin()
+                    && fieldExists(request.resource.data.sourceId)
+                    && fieldExists(request.resource.data.name)
+                    && fieldExists(request.resource.data.url)
+                    && fieldExists(request.resource.data.type)
+                    && fieldExists(request.resource.data.platform)
+                    && fieldExists(request.resource.data.location)
+                    && fieldExists(request.resource.data.scrapingFrequency);
+
+      // Only admins can update sources
+      allow update: if isAdmin();
+
+      // Only admins can delete sources
+      allow delete: if isAdmin();
+    }
+
+    // =========================================================================
     // APPLICATIONS COLLECTION
     // =========================================================================
 

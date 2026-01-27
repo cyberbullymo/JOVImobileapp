@@ -9,11 +9,14 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "migrate:gigs": "ts-node --esm --project scripts/tsconfig.json scripts/migrateGigs.ts",
-    "migrate:gigs:dry-run": "ts-node --esm --project scripts/tsconfig.json scripts/migrateGigs.ts dry-run",
-    "migrate:gigs:validate": "ts-node --esm --project scripts/tsconfig.json scripts/migrateGigs.ts validate",
+    "migrate:gigs": "ts-node --project scripts/tsconfig.json scripts/migrateGigs.ts",
+    "migrate:gigs:dry-run": "ts-node --project scripts/tsconfig.json scripts/migrateGigs.ts dry-run",
+    "migrate:gigs:validate": "ts-node --project scripts/tsconfig.json scripts/migrateGigs.ts validate",
     "firebase:deploy:rules": "firebase deploy --only firestore:rules",
-    "firebase:deploy:indexes": "firebase deploy --only firestore:indexes"
+    "firebase:deploy:indexes": "firebase deploy --only firestore:indexes",
+    "seed:gig-sources": "ts-node --project scripts/tsconfig.json scripts/seedGigSources.ts",
+    "seed:gig-sources:list": "ts-node --project scripts/tsconfig.json scripts/seedGigSources.ts list",
+    "seed:gig-sources:clear": "ts-node --project scripts/tsconfig.json scripts/seedGigSources.ts clear"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
