@@ -55,10 +55,12 @@ Targets the gmp-place-autocomplete Web Component using CSS Parts
 ==========================================================================
 */
 
-/* Ensure the host element takes up full width */
+/* Ensure the host element takes up full width and stacks above sidebar */
 .jovi-autocomplete gmp-place-autocomplete {
   width: 100%;
   display: block;
+  position: relative;
+  z-index: 100; /* Higher than sidebar (z-40) to ensure dropdown visibility */
 }
 
 /* 1. The Internal Input Field */
@@ -91,7 +93,9 @@ Targets the gmp-place-autocomplete Web Component using CSS Parts
   background-color: hsl(var(--background));
   margin-top: 6px;
   box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  overflow: hidden;
+  overflow: visible;
+  z-index: 100;
+  position: relative;
 }
 
 /* 4. Individual Suggestion Items */

@@ -3,7 +3,7 @@
  * Main feed displaying gigs, discussions, and opportunities
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -22,28 +22,80 @@ import { FeedCard, FeedCardData } from './FeedCard';
 import { FeedControls } from './FeedControls';
 import { FilterModal } from './FilterModal';
 import { SortDropdown } from './SortDropdown';
+import { getActiveGigs } from '../../services/firebase/gigService';
+import type { Gig } from '../../types';
 
-// Sample feed data - replace with real data from your backend
-const SAMPLE_FEED_DATA: FeedCardData[] = [
-  {
-    id: '1',
-    type: 'gig',
-    tag: 'Paid',
-    title: 'Looking for experienced hairstylist for bridal party',
-    author: 'Bella Salon & Spa',
-    authorType: 'Salon',
-    location: 'Los Angeles, CA',
-    distance: '2.5 mi',
-    rate: '$45-65/hr',
-    rating: 4.8,
-    interestedPros: 12,
-    experienceLevel: 'Intermediate',
+// Helper to format time ago
+const formatTimeAgo = (date: Date): string => {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return `${Math.floor(diffDays / 7)}w ago`;
+};
+
+// Helper to convert Gig to FeedCardData
+const gigToFeedCard = (gig: Gig): FeedCardData => {
+  // Determine tag based on gig type
+  let tag = 'Paid';
+  let type: FeedCardData['type'] = 'gig';
+
+  if (gig.gigType === 'tfp') {
+    tag = 'TFP';
+    type = 'tfp';
+  } else if (gig.gigType === 'apprenticeship') {
+    tag = 'Apprenticeship';
+    type = 'apprenticeship';
+  } else if (gig.gigType === 'trade') {
+    tag = 'Trade Offer';
+    type = 'trade';
+  }
+
+  // Format pay rate
+  const formatRate = (): string => {
+    if (gig.gigType === 'tfp') return 'Trade for Portfolio';
+    if (gig.gigType === 'apprenticeship') return 'Learning Opportunity';
+    const { min, max, type: payType } = gig.payRange;
+    const suffix = payType === 'hourly' ? '/hr' : payType === 'daily' ? '/day' : '';
+    if (min === max) return `$${min}${suffix}`;
+    return `$${min}-${max}${suffix}`;
+  };
+
+  // Get author name from founder profile or use source
+  const getAuthor = (): string => {
+    if (gig.founderProfile?.businessName) return gig.founderProfile.businessName;
+    if (gig.founderProfile?.displayName) return gig.founderProfile.displayName;
+    if (gig.source === 'manual') return 'Jovi Curated';
+    if (gig.source !== 'user-generated') return `via ${gig.source}`;
+    return 'Anonymous';
+  };
+
+  return {
+    id: gig.id,
+    type,
+    tag,
+    title: gig.title,
+    author: getAuthor(),
+    authorType: gig.founderProfile?.businessName ? 'Business' : 'Individual',
+    location: `${gig.location.city}, ${gig.location.state}`,
+    rate: formatRate(),
+    interestedPros: gig.applicationCount || 0,
+    experienceLevel: 'All Levels',
     licenseRequired: true,
-    requirements: ['Bridal', 'Updo', 'Color'],
-    postedDate: '2h ago',
-  },
+    requirements: gig.profession.map(p => p.charAt(0).toUpperCase() + p.slice(1).replace('-', ' ')),
+    postedDate: formatTimeAgo(new Date(gig.createdAt)),
+  };
+};
+
+// Sample community data (discussions/questions - separate from gigs)
+const SAMPLE_COMMUNITY_DATA: FeedCardData[] = [
   {
-    id: '2',
+    id: 'community-1',
     type: 'question',
     tag: 'Question',
     title: 'What are the best products for maintaining color-treated hair between salon visits?',
@@ -54,36 +106,7 @@ const SAMPLE_FEED_DATA: FeedCardData[] = [
     likes: 45,
   },
   {
-    id: '3',
-    type: 'tfp',
-    tag: 'TFP',
-    title: 'Creative makeup artist needed for editorial photoshoot',
-    author: 'Creative Studios',
-    authorType: 'Photography Studio',
-    location: 'New York, NY',
-    interestedPros: 8,
-    requirements: ['Editorial', 'Creative', 'Portfolio Builder'],
-    postedDate: '5h ago',
-  },
-  {
-    id: '4',
-    type: 'gig',
-    tag: 'Paid',
-    title: 'Part-time nail technician position available',
-    author: 'Glamour Nails',
-    authorType: 'Nail Salon',
-    location: 'Miami, FL',
-    distance: '1.2 mi',
-    rate: '$18-25/hr + tips',
-    rating: 4.5,
-    interestedPros: 6,
-    experienceLevel: 'Entry Level',
-    licenseRequired: true,
-    requirements: ['Gel', 'Acrylics', 'Nail Art'],
-    postedDate: '1d ago',
-  },
-  {
-    id: '5',
+    id: 'community-2',
     type: 'discussion',
     tag: 'Discussion',
     title: 'Tips for building a clientele as a new licensed professional?',
@@ -92,20 +115,6 @@ const SAMPLE_FEED_DATA: FeedCardData[] = [
     timeAgo: '6h ago',
     replies: 56,
     likes: 89,
-  },
-  {
-    id: '6',
-    type: 'apprenticeship',
-    tag: 'Apprenticeship',
-    title: 'Seeking motivated apprentice for busy downtown salon',
-    author: 'Urban Cuts',
-    authorType: 'Barbershop',
-    location: 'Chicago, IL',
-    interestedPros: 15,
-    experienceLevel: 'Student',
-    licenseRequired: false,
-    requirements: ['Eager to learn', 'Reliable', 'Team player'],
-    postedDate: '2d ago',
   },
 ];
 
@@ -145,13 +154,54 @@ const mapAuthorTypeToUserType = (authorType: string): string => {
 const HomeScreen = () => {
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
-  const { filters, sort, isLoading } = useFeedStore();
+  const { filters, sort, isLoading, setLoading } = useFeedStore();
   const [refreshing, setRefreshing] = useState(false);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
+  const [gigs, setGigs] = useState<FeedCardData[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch gigs from Firestore
+  const fetchGigs = async () => {
+    try {
+      setError(null);
+      const activeGigs = await getActiveGigs({ limitCount: 50 });
+      const feedCards = activeGigs.map(gigToFeedCard);
+      setGigs(feedCards);
+    } catch (err) {
+      console.error('Failed to fetch gigs:', err);
+      setError('Failed to load gigs');
+    }
+  };
+
+  // Fetch gigs on mount
+  useEffect(() => {
+    fetchGigs();
+  }, []);
+
+  // Combine gigs with community data
+  const allFeedData = useMemo(() => {
+    // Interleave gigs with community posts
+    const combined: FeedCardData[] = [];
+    const communityData = [...SAMPLE_COMMUNITY_DATA];
+
+    gigs.forEach((gig, index) => {
+      combined.push(gig);
+      // Insert a community post every 3 gigs
+      if ((index + 1) % 3 === 0 && communityData.length > 0) {
+        const communityPost = communityData.shift();
+        if (communityPost) combined.push(communityPost);
+      }
+    });
+
+    // Add remaining community posts
+    combined.push(...communityData);
+
+    return combined;
+  }, [gigs]);
 
   // Apply filters and sorting to feed data
   const filteredAndSortedData = useMemo(() => {
-    let data = [...SAMPLE_FEED_DATA];
+    let data = [...allFeedData];
 
     // Apply content type filter
     if (filters.contentTypes.length > 0) {
@@ -208,8 +258,7 @@ const HomeScreen = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    // Simulate refresh - replace with actual data fetch
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await fetchGigs();
     setRefreshing(false);
   };
 
@@ -298,10 +347,10 @@ const HomeScreen = () => {
         )}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="search-outline" size={48} color="#9CA3AF" />
-            <Text style={styles.emptyTitle}>No results found</Text>
+            <Ionicons name={error ? "alert-circle-outline" : "search-outline"} size={48} color="#9CA3AF" />
+            <Text style={styles.emptyTitle}>{error || 'No results found'}</Text>
             <Text style={styles.emptyText}>
-              Try adjusting your filters to see more content
+              {error ? 'Pull down to try again' : 'Try adjusting your filters to see more content'}
             </Text>
           </View>
         }

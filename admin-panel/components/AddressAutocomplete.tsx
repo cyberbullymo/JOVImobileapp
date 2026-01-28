@@ -6,7 +6,7 @@ import { Loader2, MapPin } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 interface AddressAutocompleteProps {
-  value: string;
+  value?: string; // Accepted for API compatibility; web component manages its own input state
   onChange: (address: string) => void;
   onLocationSelect: (location: GigLocation, formattedAddress: string) => void;
   placeholder?: string;
@@ -14,7 +14,6 @@ interface AddressAutocompleteProps {
 }
 
 export function AddressAutocomplete({
-  value,
   onChange,
   onLocationSelect,
   placeholder = "Enter address...",
@@ -25,31 +24,40 @@ export function AddressAutocomplete({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Use refs to store callbacks to avoid re-running effect when they change
+  const onChangeRef = useRef(onChange);
+  const onLocationSelectRef = useRef(onLocationSelect);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+    onLocationSelectRef.current = onLocationSelect;
+  }, [onChange, onLocationSelect]);
+
   useEffect(() => {
     if (!containerRef.current || typeof window === "undefined") return;
+
+    // Prevent duplicate initialization
+    if (autocompleteRef.current) {
+      return;
+    }
 
     const initAC = async () => {
       try {
         setIsLoading(true);
-        // Clear container to prevent duplicate inputs on re-renders
-        containerRef.current!.innerHTML = ""; 
+        // Clear container to prevent duplicate inputs
+        if (containerRef.current) {
+          containerRef.current.innerHTML = "";
+        }
 
         autocompleteRef.current = await initAutocomplete(
           containerRef.current!,
           (location, formattedAddress) => {
-            onLocationSelect(location, formattedAddress);
-            onChange(formattedAddress);
+            onLocationSelectRef.current(location, formattedAddress);
+            onChangeRef.current(formattedAddress);
             setError(null);
-          }
+          },
+          { placeholder, disabled }
         );
-
-        const input = containerRef.current?.querySelector("input");
-        if (input) {
-          input.placeholder = placeholder;
-          input.disabled = disabled;
-          input.value = value; // Sync initial value
-          input.className = "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pl-9 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
-        }
       } catch (err) {
         console.error("Failed to initialize autocomplete:", err);
         setError("Address autocomplete unavailable");
@@ -67,39 +75,27 @@ export function AddressAutocomplete({
         autocompleteRef.current.cleanup();
         autocompleteRef.current = null;
       }
+      // Also clear the container on cleanup
+      if (containerRef.current) {
+        containerRef.current.innerHTML = "";
+      }
     };
-    // Added 'value' here only if you want to re-init on value change, 
-    // but usually better to keep it out to prevent flickering.
-  }, [onLocationSelect, placeholder, disabled]); 
+  }, [placeholder, disabled]);
 
-  // Sync value changes from props to the internal input
-  useEffect(() => {
-    const input = containerRef.current?.querySelector("input");
-    if (input && value !== input.value) {
-      input.value = value;
-    }
-  }, [value]);
-
-  // Inside AddressAutocomplete.tsx
-
-return (
-  <div className="relative">
+  return (
     <div className="relative">
       <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-20 pointer-events-none" />
-      
-      {/* Apply the custom class 'jovi-autocomplete' here. 
-         We use z-index and positioning to ensure it fits the shadcn look.
-      */}
-      <div 
-        ref={containerRef} 
-        className="w-full jovi-autocomplete" 
+
+      <div
+        ref={containerRef}
+        className="w-full jovi-autocomplete"
       />
 
       {isLoading && (
         <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground z-20" />
       )}
+
+      {error && <p className="text-xs text-destructive mt-1">{error}</p>}
     </div>
-    {error && <p className="text-xs text-destructive mt-1">{error}</p>}
-  </div>
-);
+  );
 }

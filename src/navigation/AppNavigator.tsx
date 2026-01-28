@@ -7,7 +7,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
+import { Platform } from 'react-native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { theme } from '../components/design-system/theme/theme';
 import { useAuthStore } from '../store/authStore';
@@ -59,6 +61,9 @@ const AuthNavigator = () => {
 
 // Main Tab Navigator
 const MainNavigator = () => {
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = 60 + (Platform.OS === 'ios' ? insets.bottom : 0);
+
   return (
     <MainTab.Navigator
       screenOptions={({ route }) => ({
@@ -90,8 +95,8 @@ const MainNavigator = () => {
         tabBarStyle: {
           backgroundColor: theme.colors.background.paper,
           borderTopColor: theme.colors.border.light,
-          height: 60,
-          paddingBottom: 8,
+          height: tabBarHeight,
+          paddingBottom: Platform.OS === 'ios' ? insets.bottom : 8,
           paddingTop: 8,
         },
         tabBarLabelStyle: {

@@ -52,10 +52,11 @@ function extractComponent(
  * Helper to extract components from the New Place class
  */
 function extractComponentFromPlace(
-  components: google.maps.places.AddressComponent[],
+  components: google.maps.places.AddressComponent[] | undefined,
   type: string,
   useShortName: boolean = false
 ): string | null {
+  if (!components || !Array.isArray(components)) return null;
   const component = components.find((c) => c.types.includes(type));
   if (!component) return null;
   return useShortName ? component.shortText : component.longText;
@@ -88,56 +89,78 @@ export interface AutocompleteInstance {
   cleanup: () => void;
 }
 
+export interface AutocompleteOptions {
+  placeholder?: string;
+  disabled?: boolean;
+}
+
 export async function initAutocomplete(
   containerElement: HTMLElement,
-  onPlaceSelected: (location: GigLocation, formattedAddress: string) => void
+  onPlaceSelected: (location: GigLocation, formattedAddress: string) => void,
+  options: AutocompleteOptions = {}
 ): Promise<AutocompleteInstance> {
-  await getPlacesLibrary();
+  // Create a simple input element - we'll use Geocoder API instead of Autocomplete
+  const inputElement = document.createElement("input");
+  inputElement.type = "text";
+  inputElement.className = "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pl-10 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
 
-  // Create the web component
-  const autocompleteElement = new google.maps.places.PlaceAutocompleteElement({
-    componentRestrictions: { country: "us" },
-  });
+  if (options.placeholder) {
+    inputElement.placeholder = options.placeholder;
+  }
+  if (options.disabled) {
+    inputElement.disabled = true;
+  }
 
-  // Inject styles to make the web component look like a standard input
-  // The new element uses a shadow DOM, so we style the host
-  autocompleteElement.classList.add("w-full");
+  containerElement.appendChild(inputElement);
 
-  const handlePlaceSelect = async (event: any) => {
-    const place = event.place; // This is a google.maps.places.Place object
+  // Debounced geocoding on blur or Enter key
+  let debounceTimer: NodeJS.Timeout | null = null;
 
-    // Request specific fields to minimize cost/latency
-    await place.fetchFields({
-      fields: ["location", "addressComponents", "formattedAddress"],
-    });
+  const handleGeocode = async () => {
+    const address = inputElement.value.trim();
+    if (!address) return;
 
-    if (place.location) {
-      const city = extractComponentFromPlace(place.addressComponents, "locality") ||
-                   extractComponentFromPlace(place.addressComponents, "sublocality") || "";
-      
-      const state = extractComponentFromPlace(place.addressComponents, "administrative_area_level_1", true) || "";
+    console.log("Geocoding address:", address);
+
+    try {
+      const result = await geocodeAddress(address);
+      console.log("Geocode result:", result);
 
       const gigLocation: GigLocation = {
-        city,
-        state,
-        lat: place.location.lat(),
-        lng: place.location.lng(),
-        address: place.formattedAddress,
+        city: result.city,
+        state: result.state,
+        lat: result.lat,
+        lng: result.lng,
+        address: result.formattedAddress,
       };
 
-      onPlaceSelected(gigLocation, place.formattedAddress || "");
+      onPlaceSelected(gigLocation, result.formattedAddress);
+    } catch (error) {
+      console.error("Geocoding failed:", error);
     }
   };
 
-  autocompleteElement.addEventListener("gmp-placeselect", handlePlaceSelect);
-  containerElement.appendChild(autocompleteElement);
+  // Geocode on blur (when user clicks away)
+  inputElement.addEventListener("blur", () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(handleGeocode, 300);
+  });
+
+  // Geocode on Enter key
+  inputElement.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (debounceTimer) clearTimeout(debounceTimer);
+      handleGeocode();
+    }
+  });
 
   return {
-    element: autocompleteElement,
+    element: inputElement,
     cleanup: () => {
-      autocompleteElement.removeEventListener("gmp-placeselect", handlePlaceSelect);
-      if (containerElement.contains(autocompleteElement)) {
-        containerElement.removeChild(autocompleteElement);
+      if (debounceTimer) clearTimeout(debounceTimer);
+      if (containerElement.contains(inputElement)) {
+        containerElement.removeChild(inputElement);
       }
     },
   };

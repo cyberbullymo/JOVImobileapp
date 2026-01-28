@@ -28,7 +28,7 @@ service cloud.firestore {
 
     // Validate gig source
     function isValidGigSource(source) {
-      return source in ['user-generated', 'craigslist', 'indeed', 'school-board', 'facebook'];
+      return source in ['user-generated', 'craigslist', 'indeed', 'school-board', 'facebook', 'instagram', 'manual'];
     }
 
     // Check if gig is user-generated
@@ -89,10 +89,10 @@ service cloud.firestore {
                     && isValidGigSource(request.resource.data.source);
 
       // Aggregated gigs: only admins (Cloud Functions) can create
+      // sourceUrl is optional for manual entries
       allow create: if isAdmin()
                     && isAggregatedGig()
                     && request.resource.data.postedBy == null
-                    && fieldExists(request.resource.data.sourceUrl)
                     && fieldExists(request.resource.data.externalId)
                     && isValidGigSource(request.resource.data.source)
                     && (!fieldExists(request.resource.data.qualityScore)
@@ -141,6 +141,28 @@ service cloud.firestore {
 
       // Only admins can delete sources
       allow delete: if isAdmin();
+    }
+
+    // =========================================================================
+    // GIG DRAFTS COLLECTION (for admin panel draft saves)
+    // =========================================================================
+
+    match /gigDrafts/{draftId} {
+      // Admins can read all drafts, users can read their own
+      allow read: if isAdmin()
+                  || (isAuthenticated() && resource.data.userId == request.auth.uid);
+
+      // Admins and authenticated users can create drafts
+      allow create: if isAdmin()
+                    || (isAuthenticated() && request.resource.data.userId == request.auth.uid);
+
+      // Admins can update any draft, users can update their own
+      allow update: if isAdmin()
+                    || (isAuthenticated() && resource.data.userId == request.auth.uid);
+
+      // Admins can delete any draft, users can delete their own
+      allow delete: if isAdmin()
+                    || (isAuthenticated() && resource.data.userId == request.auth.uid);
     }
 
     // =========================================================================

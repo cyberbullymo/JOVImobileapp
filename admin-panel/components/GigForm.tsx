@@ -97,9 +97,10 @@ interface GigFormProps {
   initialData?: Partial<Gig>;
   isEdit?: boolean;
   gigId?: string;
+  existingDraftId?: string | null;
 }
 
-export function GigForm({ initialData, isEdit = false, gigId }: GigFormProps) {
+export function GigForm({ initialData, isEdit = false, gigId, existingDraftId }: GigFormProps) {
   const router = useRouter();
   const { toast } = useToast();
 
@@ -126,7 +127,7 @@ export function GigForm({ initialData, isEdit = false, gigId }: GigFormProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [duplicates, setDuplicates] = useState<Gig[]>([]);
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
-  const [draftId, setDraftId] = useState<string | null>(null);
+  const [draftId, setDraftId] = useState<string | null>(existingDraftId || null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
   // Autosave draft every 30 seconds

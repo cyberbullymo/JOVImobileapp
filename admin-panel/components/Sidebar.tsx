@@ -7,6 +7,7 @@ import {
   Plus,
   List,
   Database,
+  FileText,
   LogOut,
   Menu,
   X,
@@ -31,6 +32,11 @@ const navItems = [
     title: "Create New Gig",
     href: "/gigs/new",
     icon: Plus,
+  },
+  {
+    title: "Drafts",
+    href: "/drafts",
+    icon: FileText,
   },
   {
     title: "Gig Sources",

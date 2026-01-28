@@ -92,8 +92,9 @@ export async function createGig(input: CreateGigInput): Promise<string> {
   const now = new Date();
   const expiresAt = input.expiresAt || new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
+  const cleanInput = removeUndefinedFields(input);
   const gigData = {
-    ...input,
+    ...cleanInput,
     postedBy: null, // Aggregated gigs have null postedBy
     createdAt: Timestamp.fromDate(now),
     lastUpdatedAt: Timestamp.fromDate(now),
@@ -258,22 +259,31 @@ export async function bulkDeleteGigs(ids: string[]): Promise<void> {
   await batch.commit();
 }
 
+// Helper to remove undefined values (Firestore doesn't accept undefined)
+function removeUndefinedFields<T extends object>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([_, value]) => value !== undefined)
+  ) as Partial<T>;
+}
+
 // Draft operations
 export async function saveDraft(
   userId: string,
   draftId: string | null,
   data: Partial<CreateGigInput>
 ): Promise<string> {
+  const cleanData = removeUndefinedFields(data);
+
   if (draftId) {
     const docRef = doc(db, COLLECTIONS.DRAFTS, draftId);
     await updateDoc(docRef, {
-      ...data,
+      ...cleanData,
       updatedAt: Timestamp.fromDate(new Date()),
     });
     return draftId;
   } else {
     const docRef = await addDoc(collection(db, COLLECTIONS.DRAFTS), {
-      ...data,
+      ...cleanData,
       userId,
       createdAt: Timestamp.fromDate(new Date()),
       updatedAt: Timestamp.fromDate(new Date()),
@@ -294,6 +304,32 @@ export async function getDraft(draftId: string): Promise<Partial<CreateGigInput>
 export async function deleteDraft(draftId: string): Promise<void> {
   const docRef = doc(db, COLLECTIONS.DRAFTS, draftId);
   await deleteDoc(docRef);
+}
+
+export interface GigDraft {
+  id: string;
+  userId: string;
+  title?: string;
+  description?: string;
+  location?: {
+    city?: string;
+    state?: string;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export async function getAllDrafts(): Promise<GigDraft[]> {
+  const q = query(
+    collection(db, COLLECTIONS.DRAFTS),
+    orderBy("updatedAt", "desc")
+  );
+
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((doc) => {
+    const data = convertTimestamps(doc.data());
+    return { id: doc.id, ...data } as GigDraft;
+  });
 }
 
 // Analytics

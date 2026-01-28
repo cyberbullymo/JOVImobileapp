@@ -96,7 +96,9 @@ export type GigOrigin =
   | 'craigslist'
   | 'indeed'
   | 'school-board'
-  | 'facebook';
+  | 'facebook'
+  | 'instagram'
+  | 'manual';
 
 // Profession types supported
 export type GigProfession =
