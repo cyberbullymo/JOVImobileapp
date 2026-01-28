@@ -16,7 +16,11 @@
     "firebase:deploy:indexes": "firebase deploy --only firestore:indexes",
     "seed:gig-sources": "ts-node --project scripts/tsconfig.json scripts/seedGigSources.ts",
     "seed:gig-sources:list": "ts-node --project scripts/tsconfig.json scripts/seedGigSources.ts list",
-    "seed:gig-sources:clear": "ts-node --project scripts/tsconfig.json scripts/seedGigSources.ts clear"
+    "seed:gig-sources:clear": "ts-node --project scripts/tsconfig.json scripts/seedGigSources.ts clear",
+    "admin:set": "ts-node --project scripts/tsconfig.json scripts/setAdminClaim.ts set",
+    "admin:remove": "ts-node --project scripts/tsconfig.json scripts/setAdminClaim.ts remove",
+    "admin:check": "ts-node --project scripts/tsconfig.json scripts/setAdminClaim.ts check",
+    "admin:list": "ts-node --project scripts/tsconfig.json scripts/setAdminClaim.ts list"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

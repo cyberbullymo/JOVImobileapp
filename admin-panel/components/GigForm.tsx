@@ -214,16 +214,19 @@ export function GigForm({ initialData, isEdit = false, gigId }: GigFormProps) {
     }));
   };
 
-  const handleLocationSelect = (
-    location: { city: string; state: string; lat?: number; lng?: number },
-    formattedAddress: string
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      location: { ...location, address: formattedAddress },
-    }));
-    setAddressInput(formattedAddress);
-  };
+  const handleLocationSelect = useCallback(
+    (
+      location: { city: string; state: string; lat?: number; lng?: number },
+      formattedAddress: string
+    ) => {
+      setFormData((prev) => ({
+        ...prev,
+        location: { ...location, address: formattedAddress },
+      }));
+      setAddressInput(formattedAddress);
+    },
+    []
+  );
 
   const validateForm = (): boolean => {
     const validationErrors = validateGigForm(formData);

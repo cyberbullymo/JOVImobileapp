@@ -4,19 +4,21 @@
 
 @layer base {
   :root {
+    /* Jupiter Branding Colors */
+    --primary: 276 56% 27%; /* #4A1E6B (Purple) */
+    --secondary: 0 100% 71%; /* #FF6B6B (Coral) */
+    --accent: 51 100% 50%; /* #FFD700 (Gold) */
+    
     --background: 0 0% 98%;
     --foreground: 0 0% 10%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 10%;
-    --primary: 276 56% 27%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 100% 71%;
     --secondary-foreground: 0 0% 100%;
     --muted: 240 5% 96%;
     --muted-foreground: 240 4% 46%;
-    --accent: 51 100% 50%;
     --accent-foreground: 0 0% 10%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
@@ -27,7 +29,13 @@
     --border: 240 6% 90%;
     --input: 240 6% 90%;
     --ring: 276 56% 27%;
-    --radius: 0.75rem;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* Add dark mode variants here if needed in the future */
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
   }
 }
 
@@ -41,7 +49,72 @@
   }
 }
 
-/* Custom scrollbar */
+/* ==========================================================================
+GOOGLE PLACES (NEW) API STYLING
+Targets the gmp-place-autocomplete Web Component using CSS Parts
+==========================================================================
+*/
+
+/* Ensure the host element takes up full width */
+.jovi-autocomplete gmp-place-autocomplete {
+  width: 100%;
+  display: block;
+}
+
+/* 1. The Internal Input Field */
+.jovi-autocomplete gmp-place-autocomplete::part(input) {
+  display: flex;
+  height: 2.5rem; /* Matches h-10 */
+  width: 100%;
+  border-radius: calc(var(--radius) - 2px);
+  border: 1px solid hsl(var(--input));
+  background-color: hsl(var(--background));
+  /* Left padding is 2.25rem (36px) to clear the MapPin icon */
+  padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+  font-size: 0.875rem;
+  color: hsl(var(--foreground));
+  transition: all 0.2s ease-in-out;
+  font-family: inherit;
+}
+
+/* 2. Input Focus State (Jupiter Purple Ring) */
+.jovi-autocomplete gmp-place-autocomplete::part(input):focus {
+  outline: none;
+  border-color: #4A1E6B;
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px #4A1E6B;
+}
+
+/* 3. The Dropdown List Container */
+.jovi-autocomplete gmp-place-autocomplete::part(list) {
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--background));
+  margin-top: 6px;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  overflow: hidden;
+}
+
+/* 4. Individual Suggestion Items */
+.jovi-autocomplete gmp-place-autocomplete::part(suggestion) {
+  padding: 10px 14px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+/* 5. Suggestion Hover/Focus (Using Jupiter Coral tint) */
+.jovi-autocomplete gmp-place-autocomplete::part(suggestion):hover,
+.jovi-autocomplete gmp-place-autocomplete::part(suggestion):focus {
+  background-color: hsla(0, 100%, 71%, 0.1); /* Subtle Coral background */
+  color: #4A1E6B; /* Purple text */
+}
+
+/* ==========================================================================
+CUSTOM UI UTILITIES
+==========================================================================
+*/
+
+/* Custom scrollbar for Sidebar and Tables */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -61,36 +134,9 @@
   background: hsl(var(--muted-foreground) / 0.5);
 }
 
-/* Google Places Autocomplete styling */
-.pac-container {
-  border-radius: 0.5rem;
-  border: 1px solid hsl(var(--border));
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  margin-top: 4px;
-  font-family: inherit;
-}
-
-.pac-item {
-  padding: 8px 12px;
-  cursor: pointer;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.pac-item:hover {
-  background-color: hsl(var(--muted));
-}
-
-.pac-item-query {
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.pac-matched {
-  font-weight: 600;
-  color: hsl(var(--primary));
-}
-
-.pac-icon {
+/* Utility to hide the Google Logo if required by your layout 
+   Note: Google's TOS usually requires attribution if no map is present.
+*/
+.jovi-autocomplete gmp-place-autocomplete::part(logo) {
   display: none;
 }

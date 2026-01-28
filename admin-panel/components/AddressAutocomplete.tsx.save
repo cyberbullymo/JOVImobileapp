@@ -1,9 +1,5 @@
-"use client";
-
-import { initAutocomplete, type AutocompleteInstance } from "@/lib/geocoding";
 import type { GigLocation } from "@/types";
-import { Loader2, MapPin } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { MapPin, Loader2 } from "lucide-react";
 
 interface AddressAutocompleteProps {
   value: string;
@@ -31,9 +27,6 @@ export function AddressAutocomplete({
     const initAC = async () => {
       try {
         setIsLoading(true);
-        // Clear container to prevent duplicate inputs on re-renders
-        containerRef.current!.innerHTML = ""; 
-
         autocompleteRef.current = await initAutocomplete(
           containerRef.current!,
           (location, formattedAddress) => {
@@ -43,11 +36,11 @@ export function AddressAutocomplete({
           }
         );
 
+        // Apply custom styles to the autocomplete input
         const input = containerRef.current?.querySelector("input");
         if (input) {
           input.placeholder = placeholder;
           input.disabled = disabled;
-          input.value = value; // Sync initial value
           input.className = "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pl-9 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
         }
       } catch (err) {
@@ -58,6 +51,7 @@ export function AddressAutocomplete({
       }
     };
 
+    // Only initialize if Google Maps API key is available
     if (process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
       initAC();
     }
@@ -68,11 +62,9 @@ export function AddressAutocomplete({
         autocompleteRef.current = null;
       }
     };
-    // Added 'value' here only if you want to re-init on value change, 
-    // but usually better to keep it out to prevent flickering.
-  }, [onLocationSelect, placeholder, disabled]); 
+  }, [onChange, onLocationSelect, placeholder, disabled]);
 
-  // Sync value changes from props to the internal input
+  // Update the input value when the value prop changes
   useEffect(() => {
     const input = containerRef.current?.querySelector("input");
     if (input && value !== input.value) {
@@ -80,26 +72,16 @@ export function AddressAutocomplete({
     }
   }, [value]);
 
-  // Inside AddressAutocomplete.tsx
-
-return (
-  <div className="relative">
+  return (
     <div className="relative">
-      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-20 pointer-events-none" />
-      
-      {/* Apply the custom class 'jovi-autocomplete' here. 
-         We use z-index and positioning to ensure it fits the shadcn look.
-      */}
-      <div 
-        ref={containerRef} 
-        className="w-full jovi-autocomplete" 
-      />
-
-      {isLoading && (
-        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground z-20" />
-      )}
+      <div className="relative">
+        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
+        <div ref={containerRef} className="w-full" />
+        {isLoading && (
+          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground z-10" />
+        )}
+      </div>
+      {error && <p className="text-xs text-destructive mt-1">{error}</p>}
     </div>
-    {error && <p className="text-xs text-destructive mt-1">{error}</p>}
-  </div>
-);
+  );
 }
