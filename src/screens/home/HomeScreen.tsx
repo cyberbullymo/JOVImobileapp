@@ -1,6 +1,6 @@
 /**
  * Home Screen
- * Main feed displaying gigs, discussions, and opportunities
+ * Main feed displaying gigs
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -92,48 +92,10 @@ const gigToFeedCard = (gig: Gig): FeedCardData => {
   };
 };
 
-// Sample community data (discussions/questions - separate from gigs)
-const SAMPLE_COMMUNITY_DATA: FeedCardData[] = [
-  {
-    id: 'community-1',
-    type: 'question',
-    tag: 'Question',
-    title: 'What are the best products for maintaining color-treated hair between salon visits?',
-    author: 'Sarah Mitchell',
-    authorType: 'Future Pro',
-    timeAgo: '4h ago',
-    replies: 24,
-    likes: 45,
-  },
-  {
-    id: 'community-2',
-    type: 'discussion',
-    tag: 'Discussion',
-    title: 'Tips for building a clientele as a new licensed professional?',
-    author: 'Marcus Johnson',
-    authorType: 'Licensed Pro',
-    timeAgo: '6h ago',
-    replies: 56,
-    likes: 89,
-  },
-];
-
-// Map FeedCardData types to filter content types
-const mapTypeToContentType = (type: FeedCardData['type']): string => {
-  switch (type) {
-    case 'gig':
-    case 'tfp':
-    case 'apprenticeship':
-    case 'trade':
-      return 'gigs';
-    case 'question':
-    case 'discussion':
-      return 'discussions';
-    case 'portfolio':
-      return 'posts';
-    default:
-      return 'posts';
-  }
+// Map FeedCardData types to filter content types (MVP: gigs only)
+const mapTypeToContentType = (_type: FeedCardData['type']): string => {
+  // All gig types map to 'gigs'
+  return 'gigs';
 };
 
 // Map authorType to filter user types
@@ -178,25 +140,9 @@ const HomeScreen = () => {
     fetchGigs();
   }, []);
 
-  // Combine gigs with community data
+  // MVP: Only show gigs (no discussions/community content)
   const allFeedData = useMemo(() => {
-    // Interleave gigs with community posts
-    const combined: FeedCardData[] = [];
-    const communityData = [...SAMPLE_COMMUNITY_DATA];
-
-    gigs.forEach((gig, index) => {
-      combined.push(gig);
-      // Insert a community post every 3 gigs
-      if ((index + 1) % 3 === 0 && communityData.length > 0) {
-        const communityPost = communityData.shift();
-        if (communityPost) combined.push(communityPost);
-      }
-    });
-
-    // Add remaining community posts
-    combined.push(...communityData);
-
-    return combined;
+    return gigs;
   }, [gigs]);
 
   // Apply filters and sorting to feed data
@@ -230,24 +176,25 @@ const HomeScreen = () => {
         // Already sorted by most recent in sample data
         break;
       case 'popular':
+        // MVP: Sort by interested pros count
         data.sort((a, b) => {
-          const aScore = (a.likes || 0) + (a.replies || 0) + (a.interestedPros || 0);
-          const bScore = (b.likes || 0) + (b.replies || 0) + (b.interestedPros || 0);
+          const aScore = a.interestedPros || 0;
+          const bScore = b.interestedPros || 0;
           return bScore - aScore;
         });
         break;
       case 'trending':
-        // For demo, use a combination of engagement and recency
+        // MVP: Sort by interested pros (same as popular for now)
         data.sort((a, b) => {
-          const aScore = ((a.likes || 0) + (a.replies || 0)) * 1.5;
-          const bScore = ((b.likes || 0) + (b.replies || 0)) * 1.5;
+          const aScore = a.interestedPros || 0;
+          const bScore = b.interestedPros || 0;
           return bScore - aScore;
         });
         break;
       case 'relevant':
-        // For demo, prioritize gigs over discussions
+        // MVP: Prioritize gig types
         data.sort((a, b) => {
-          const priority: Record<string, number> = { gig: 3, tfp: 2, apprenticeship: 2, question: 1, discussion: 1, trade: 1, portfolio: 0 };
+          const priority: Record<string, number> = { gig: 3, tfp: 2, apprenticeship: 2, trade: 1, portfolio: 0 };
           return (priority[b.type] || 0) - (priority[a.type] || 0);
         });
         break;

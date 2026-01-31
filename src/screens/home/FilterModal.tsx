@@ -209,7 +209,8 @@ export const FilterModal = () => {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContentContainer}>
 
-            {/* Content Type */}
+            {/* Content Type - Hidden for MVP (gigs only) */}
+            {/* TODO: Re-enable when discussions/posts are added
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Content Type</Text>
               <View style={styles.optionsGrid}>
@@ -225,6 +226,7 @@ export const FilterModal = () => {
             </View>
 
             <View style={styles.divider} />
+            */}
 
             {/* User Type */}
             <View style={styles.section}>

@@ -1,6 +1,6 @@
 /**
  * Feed Card Component
- * Displays gigs, discussions, and opportunities in the home feed
+ * Displays gigs in the home feed (MVP: gigs only)
  */
 
 import React from 'react';
@@ -16,19 +16,16 @@ import { theme } from '../../components/design-system/theme/theme';
 
 export interface FeedCardData {
   id: string;
-  type: 'gig' | 'question' | 'discussion' | 'tfp' | 'apprenticeship' | 'portfolio' | 'trade';
+  type: 'gig' | 'tfp' | 'apprenticeship' | 'portfolio' | 'trade';  // MVP: gigs only
   tag: string;
   title: string;
   author: string;
   authorType: string;
   avatar?: string;
-  timeAgo?: string;
   location?: string;
   distance?: string;
   rate?: string;
   rating?: number;
-  replies?: number;
-  likes?: number;
   interestedPros?: number;
   experienceLevel?: string;
   licenseRequired?: boolean;
@@ -55,10 +52,6 @@ const getTagStyle = (tag: string) => {
       return { backgroundColor: '#AFAB2320', color: '#AFAB23', borderColor: '#AFAB2340' };
     case 'Trade Offer':
       return { backgroundColor: '#AFAB2320', color: '#AFAB23', borderColor: '#AFAB2340' };
-    case 'Question':
-      return { backgroundColor: '#3B82F620', color: '#3B82F6', borderColor: '#3B82F640' };
-    case 'Discussion':
-      return { backgroundColor: '#8B5CF620', color: '#8B5CF6', borderColor: '#8B5CF640' };
     default:
       return { backgroundColor: '#f9fafb', color: '#374151', borderColor: '#e5e7eb' };
   }
@@ -67,51 +60,7 @@ const getTagStyle = (tag: string) => {
 export const FeedCard = ({ data, onPress, onBookmark, isBookmarked }: FeedCardProps) => {
   const tagStyle = getTagStyle(data.tag);
 
-  // Render discussion/question card
-  if (data.type === 'question' || data.type === 'discussion') {
-    return (
-      <TouchableOpacity
-        style={styles.card}
-        onPress={onPress}
-        activeOpacity={0.7}>
-        <View style={styles.cardHeader}>
-          <View style={[styles.badge, { backgroundColor: tagStyle.backgroundColor, borderColor: tagStyle.borderColor }]}>
-            <Text style={[styles.badgeText, { color: tagStyle.color }]}>{data.tag}</Text>
-          </View>
-          <Text style={styles.timeAgo}>{data.timeAgo}</Text>
-        </View>
-
-        <Text style={styles.title}>{data.title}</Text>
-
-        <View style={styles.cardFooter}>
-          <View style={styles.authorContainer}>
-            {data.avatar ? (
-              <Image source={{ uri: data.avatar }} style={styles.avatar} />
-            ) : (
-              <View style={styles.avatarPlaceholder} />
-            )}
-            <View>
-              <Text style={styles.authorName}>{data.author}</Text>
-              <Text style={styles.authorType}>{data.authorType}</Text>
-            </View>
-          </View>
-
-          <View style={styles.statsContainer}>
-            <View style={styles.stat}>
-              <Ionicons name="chatbubble-outline" size={18} color="#B10347" />
-              <Text style={styles.statText}>{data.replies || 0}</Text>
-            </View>
-            <View style={styles.stat}>
-              <Ionicons name="heart-outline" size={18} color="#B10347" />
-              <Text style={styles.statText}>{data.likes || 0}</Text>
-            </View>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  }
-
-  // Render default card (gigs, TFP, apprenticeships, etc.)
+  // MVP: Render gig cards only
   return (
     <TouchableOpacity
       style={styles.card}
@@ -236,11 +185,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '500',
   },
-  timeAgo: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    fontWeight: '300',
-  },
   title: {
     fontSize: 15,
     fontWeight: '500',
@@ -339,20 +283,6 @@ const styles = StyleSheet.create({
   },
   postedDate: {
     color: '#9CA3AF',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  stat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  statText: {
-    fontSize: 13,
-    color: '#B10347',
   },
   interestedContainer: {
     flexDirection: 'row',

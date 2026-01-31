@@ -5,8 +5,8 @@
 
 import { create } from 'zustand';
 
-// Types
-export type ContentType = 'posts' | 'gigs' | 'discussions';
+// Types (MVP: gigs only)
+export type ContentType = 'gigs';
 export type UserTypeFilter = 'future_pro' | 'licensed_pro' | 'founder';
 export type DatePosted = 'today' | 'week' | 'month' | 'all';
 export type SortMethod = 'recent' | 'popular' | 'trending' | 'relevant';
@@ -222,11 +222,9 @@ export const SORT_LABELS: Record<SortMethod, string> = {
   relevant: 'Relevant',
 };
 
-// Content type labels
+// Content type labels (MVP: gigs only)
 export const CONTENT_TYPE_LABELS: Record<ContentType, string> = {
-  posts: 'Posts',
   gigs: 'Gigs',
-  discussions: 'Discussions',
 };
 
 // User type labels
