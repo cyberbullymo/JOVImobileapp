@@ -22,7 +22,13 @@ import { FeedCard, FeedCardData } from './FeedCard';
 import { FeedControls } from './FeedControls';
 import { FilterModal } from './FilterModal';
 import { SortDropdown } from './SortDropdown';
+import { InternalApplyModal } from '../../components/composites/InternalApplyModal';
 import { getActiveGigs } from '../../services/firebase/gigService';
+import {
+  getUserAppliedGigIds,
+  markAsApplied,
+} from '../../services/firebase/applicationService';
+import { showAppliedToast } from '../../lib/markAppliedPrompt';
 import type { Gig } from '../../types';
 
 // Helper to convert Firestore timestamp to Date
@@ -156,11 +162,13 @@ const mapAuthorTypeToUserType = (authorType: string): string => {
 const HomeScreen = () => {
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
-  const { filters, sort, isLoading, setLoading } = useFeedStore();
+  const { filters, sort, isLoading } = useFeedStore();
   const [refreshing, setRefreshing] = useState(false);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
+  const [appliedGigIds, setAppliedGigIds] = useState<Set<string>>(new Set());
   const [gigs, setGigs] = useState<FeedCardData[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [applyModalGig, setApplyModalGig] = useState<FeedCardData | null>(null);
 
   // Fetch gigs from Firestore
   const fetchGigs = async () => {
@@ -175,10 +183,22 @@ const HomeScreen = () => {
     }
   };
 
-  // Fetch gigs on mount
+  // Fetch user's applied gigs (GIG-008)
+  const fetchAppliedGigs = async () => {
+    if (!user?.id) return;
+    try {
+      const appliedIds = await getUserAppliedGigIds(user.id);
+      setAppliedGigIds(appliedIds);
+    } catch (err) {
+      console.error('Failed to fetch applied gigs:', err);
+    }
+  };
+
+  // Fetch gigs and applied status on mount
   useEffect(() => {
     fetchGigs();
-  }, []);
+    fetchAppliedGigs();
+  }, [user?.id]);
 
   // MVP: Only show gigs (no discussions/community content)
   const allFeedData = useMemo(() => {
@@ -271,6 +291,49 @@ const HomeScreen = () => {
     console.log('Profile pressed:', userId);
   };
 
+  // Handle marking a gig as applied (GIG-008)
+  const handleMarkApplied = async (gigId: string) => {
+    if (!user?.id) return;
+
+    const gig = gigs.find((g) => g.id === gigId);
+    if (!gig) return;
+
+    try {
+      await markAsApplied({
+        gigId,
+        gigTitle: gig.title,
+        userId: user.id,
+        source: gig.source || 'user-generated',
+        sourceUrl: gig.sourceUrl || undefined,
+      });
+
+      // Update local state
+      setAppliedGigIds((prev) => new Set([...prev, gigId]));
+
+      // Show success toast
+      showAppliedToast();
+    } catch (err) {
+      console.error('Failed to mark gig as applied:', err);
+    }
+  };
+
+  // Handle internal Jovi application
+  const handleApply = (gigId: string) => {
+    const gig = gigs.find((g) => g.id === gigId);
+    if (gig) {
+      setApplyModalGig(gig);
+    }
+  };
+
+  // Handle successful internal application
+  const handleInternalApplySuccess = () => {
+    if (applyModalGig) {
+      setAppliedGigIds((prev) => new Set([...prev, applyModalGig.id]));
+    }
+    setApplyModalGig(null);
+    showAppliedToast();
+  };
+
   const renderHeader = () => (
     <View style={styles.headerContent}>
       {/* Greeting */}
@@ -336,6 +399,10 @@ const HomeScreen = () => {
             onBookmark={() => handleBookmark(item.id)}
             isBookmarked={bookmarkedIds.has(item.id)}
             onProfilePress={handleProfilePress}
+            userId={user?.id}
+            hasApplied={appliedGigIds.has(item.id)}
+            onApply={() => handleApply(item.id)}
+            onMarkApplied={handleMarkApplied}
           />
         )}
         ListEmptyComponent={
@@ -354,6 +421,19 @@ const HomeScreen = () => {
 
       {/* Sort Dropdown */}
       <SortDropdown />
+
+      {/* Internal Apply Modal (GIG-008) */}
+      {applyModalGig && user?.id && (
+        <InternalApplyModal
+          visible={!!applyModalGig}
+          gigId={applyModalGig.id}
+          gigTitle={applyModalGig.title}
+          companyName={applyModalGig.author}
+          userId={user.id}
+          onClose={() => setApplyModalGig(null)}
+          onSuccess={handleInternalApplySuccess}
+        />
+      )}
     </View>
   );
 };

@@ -149,6 +149,46 @@
         { "fieldPath": "isActive", "order": "ASCENDING" },
         { "fieldPath": "lastScraped", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "applicationAttempts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "gigId", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "applicationAttempts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "userApplications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "appliedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "userApplications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "gigId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "userApplications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "gigId", "order": "ASCENDING" },
+        { "fieldPath": "appliedAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": [

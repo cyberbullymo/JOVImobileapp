@@ -32,6 +32,8 @@ export const COLLECTIONS = {
   GIGS: 'gigs',
   GIG_SOURCES: 'gigSources',
   APPLICATIONS: 'applications',
+  APPLICATION_ATTEMPTS: 'applicationAttempts',
+  USER_APPLICATIONS: 'userApplications',
   CONVERSATIONS: 'conversations',
   MESSAGES: 'messages',
   NOTIFICATIONS: 'notifications',

@@ -277,5 +277,59 @@ service cloud.firestore {
       allow delete: if isAuthenticated()
                     && resource.data.userId == request.auth.uid;
     }
+
+    // =========================================================================
+    // APPLICATION ATTEMPTS COLLECTION (GIG-008)
+    // Tracks when users open external application links
+    // =========================================================================
+
+    match /applicationAttempts/{attemptId} {
+      // Users can read their own attempts, admins can read all
+      allow read: if isAuthenticated()
+                  && (resource.data.userId == request.auth.uid || isAdmin());
+
+      // Authenticated users can create attempts for themselves
+      allow create: if isAuthenticated()
+                    && request.resource.data.userId == request.auth.uid
+                    && fieldExists(request.resource.data.gigId)
+                    && fieldExists(request.resource.data.source)
+                    && fieldExists(request.resource.data.sourceUrl);
+
+      // Attempts are immutable (no updates)
+      allow update: if false;
+
+      // Users can delete their own attempts
+      allow delete: if isAuthenticated()
+                    && resource.data.userId == request.auth.uid;
+    }
+
+    // =========================================================================
+    // USER APPLICATIONS COLLECTION (GIG-008)
+    // Tracks user's applied gigs for "My Applications" section
+    // =========================================================================
+
+    match /userApplications/{applicationId} {
+      // Users can read their own applications
+      allow read: if isAuthenticated()
+                  && resource.data.userId == request.auth.uid;
+
+      // Admins can read all for analytics
+      allow read: if isAdmin();
+
+      // Authenticated users can create applications for themselves
+      allow create: if isAuthenticated()
+                    && request.resource.data.userId == request.auth.uid
+                    && fieldExists(request.resource.data.gigId)
+                    && fieldExists(request.resource.data.gigTitle)
+                    && fieldExists(request.resource.data.source);
+
+      // Users can update their own applications (status, notes)
+      allow update: if isAuthenticated()
+                    && resource.data.userId == request.auth.uid;
+
+      // Users can delete their own applications
+      allow delete: if isAuthenticated()
+                    && resource.data.userId == request.auth.uid;
+    }
   }
 }

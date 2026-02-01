@@ -403,6 +403,63 @@ export interface Application {
 }
 
 // ============================================================================
+// EXTERNAL APPLICATION TRACKING TYPES (GIG-008)
+// ============================================================================
+
+// Status of an external application attempt
+export type ExternalApplicationStatus = 'opened' | 'applied' | 'marked_applied';
+
+// Tracks when a user opens an external application link
+export interface ApplicationAttempt {
+  id: string;
+  gigId: string;
+  userId: string;
+  source: GigOrigin;
+  sourceUrl: string;
+  timestamp: Date;
+  status: ExternalApplicationStatus;
+}
+
+// User's application record (for "My Applications" section)
+export interface UserApplication {
+  id: string;
+  gigId: string;
+  gigTitle: string;
+  userId: string;
+  appliedAt: Date;
+  status: 'applied' | 'interviewing' | 'offered' | 'rejected' | 'accepted';
+  source: GigOrigin;
+  sourceUrl?: string;
+  notes?: string;
+}
+
+// Input for creating an application attempt
+export interface CreateApplicationAttemptInput {
+  gigId: string;
+  userId: string;
+  source: GigOrigin;
+  sourceUrl: string;
+}
+
+// Input for marking a gig as applied
+export interface MarkAsAppliedInput {
+  gigId: string;
+  gigTitle: string;
+  userId: string;
+  source: GigOrigin;
+  sourceUrl?: string;
+}
+
+// Input for creating an internal Jovi application
+export interface CreateInternalApplicationInput {
+  gigId: string;
+  gigTitle: string;
+  applicantId: string;
+  coverLetter: string;
+  portfolioLinks?: string[];
+}
+
+// ============================================================================
 // MESSAGING TYPES
 // ============================================================================
 

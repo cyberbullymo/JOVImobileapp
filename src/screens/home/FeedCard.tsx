@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../components/design-system/theme/theme';
 import { SourceBadge } from '../../components/composites/SourceBadge';
 import { SourceInfoTooltip } from '../../components/composites/SourceInfoTooltip';
+import { ApplyButton } from '../../components/composites/ApplyButton';
 import type { GigOrigin } from '../../types';
 
 export interface FeedCardData {
@@ -50,6 +51,11 @@ interface FeedCardProps {
   onBookmark?: () => void;
   isBookmarked?: boolean;
   onProfilePress?: (userId: string) => void;
+  // External apply flow (GIG-008)
+  userId?: string | null;
+  hasApplied?: boolean;
+  onApply?: () => void;
+  onMarkApplied?: (gigId: string) => void;
 }
 
 const getTagStyle = (tag: string) => {
@@ -71,7 +77,17 @@ const getTagStyle = (tag: string) => {
   }
 };
 
-export const FeedCard = ({ data, onPress, onBookmark, isBookmarked, onProfilePress }: FeedCardProps) => {
+export const FeedCard = ({
+  data,
+  onPress,
+  onBookmark,
+  isBookmarked,
+  onProfilePress,
+  userId,
+  hasApplied = false,
+  onApply,
+  onMarkApplied,
+}: FeedCardProps) => {
   const tagStyle = getTagStyle(data.tag);
   const [showSourceInfo, setShowSourceInfo] = useState(false);
 
@@ -103,8 +119,17 @@ export const FeedCard = ({ data, onPress, onBookmark, isBookmarked, onProfilePre
       )}
 
       <View style={styles.cardHeader}>
-        <View style={[styles.badge, { backgroundColor: tagStyle.backgroundColor, borderColor: tagStyle.borderColor }]}>
-          <Text style={[styles.badgeText, { color: tagStyle.color }]}>{data.tag}</Text>
+        <View style={styles.headerLeft}>
+          <View style={[styles.badge, { backgroundColor: tagStyle.backgroundColor, borderColor: tagStyle.borderColor }]}>
+            <Text style={[styles.badgeText, { color: tagStyle.color }]}>{data.tag}</Text>
+          </View>
+          {/* Applied Badge (GIG-008) */}
+          {hasApplied && (
+            <View style={styles.appliedBadge}>
+              <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+              <Text style={styles.appliedBadgeText}>Applied</Text>
+            </View>
+          )}
         </View>
         <View style={styles.headerRight}>
           {data.rating && (
@@ -179,13 +204,29 @@ export const FeedCard = ({ data, onPress, onBookmark, isBookmarked, onProfilePre
           </View>
         </View>
 
-        {data.interestedPros && (
+        {data.interestedPros !== undefined && data.interestedPros > 0 && (
           <View style={styles.interestedContainer}>
             <Ionicons name="people-outline" size={18} color="#B10347" />
             <Text style={styles.interestedText}>{data.interestedPros} pros interested</Text>
           </View>
         )}
       </View>
+
+      {/* Apply Button (GIG-008) */}
+      {data.source && (
+        <View style={styles.applyButtonContainer}>
+          <ApplyButton
+            gigId={data.id}
+            gigTitle={data.title}
+            source={data.source}
+            sourceUrl={data.sourceUrl ?? null}
+            userId={userId ?? null}
+            hasApplied={hasApplied}
+            onInternalApply={onApply}
+            onMarkApplied={onMarkApplied}
+          />
+        </View>
+      )}
     </TouchableOpacity>
   );
 };
@@ -206,6 +247,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 10,
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -216,6 +263,20 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 6,
     borderWidth: 1,
+  },
+  appliedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 4,
+  },
+  appliedBadgeText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#10B981',
   },
   badgeText: {
     fontSize: 11,
@@ -329,6 +390,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#B10347',
     fontWeight: '300',
+  },
+  applyButtonContainer: {
+    marginTop: 12,
   },
 });
 
