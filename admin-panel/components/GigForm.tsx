@@ -338,7 +338,7 @@ if (field === "gigType" && value === "booth-rental") {
   };
 
   const titleInfo = getCharacterCountInfo(formData.title, 5, 100);
-  const descInfo = getCharacterCountInfo(formData.description, 20, 5000);
+  const descInfo = getCharacterCountInfo(formData.description, 20, 8000);
 
   console.log("Validation Errors:", errors);
   return (

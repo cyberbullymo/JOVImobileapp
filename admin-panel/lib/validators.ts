@@ -17,8 +17,8 @@ export function validateGigForm(data: GigFormData): ValidationError[] {
     errors.push({ field: "description", message: "Description is required" });
   } else if (data.description.length < 20) {
     errors.push({ field: "description", message: "Description must be at least 20 characters" });
-  } else if (data.description.length > 5000) {
-    errors.push({ field: "description", message: "Description must be less than 5000 characters" });
+  } else if (data.description.length > 8000) {
+    errors.push({ field: "description", message: "Description must be less than 8000 characters" });
   }
 
   // Location validation

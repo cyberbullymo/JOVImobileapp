@@ -158,10 +158,10 @@ export function GigPreview({ data }: GigPreviewProps) {
           <span>Description</span>
           <span
             className={
-              data.description.length > 5000 ? "text-destructive" : ""
+              data.description.length > 8000 ? "text-destructive" : ""
             }
           >
-            {data.description.length}/5000 characters
+            {data.description.length}/8000 characters
           </span>
         </div>
         {data.location.lat && data.location.lng && (

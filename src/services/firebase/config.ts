@@ -3,8 +3,10 @@
  * Using the JavaScript Firebase SDK for Expo Go compatibility
  */
 
-import { initializeApp, getApps } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getApps, initializeApp } from 'firebase/app';
+// @ts-expect-error - getReactNativePersistence is exported in RN bundle but not in types
+import { initializeAuth, getAuth, getReactNativePersistence } from '@firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
@@ -21,8 +23,12 @@ const firebaseConfig = {
 // Initialize Firebase (prevent re-initialization)
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
-// Export Firebase instances
-export const auth = getAuth(app);
+// Initialize Firebase Auth with React Native persistence
+export const auth = getApps().length === 1
+  ? initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage),
+    })
+  : getAuth(app);
 export const firestore = getFirestore(app);
 export const storage = getStorage(app);
 

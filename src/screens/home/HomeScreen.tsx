@@ -261,7 +261,7 @@ const HomeScreen = () => {
     }
 
     return data;
-  }, [filters, sort]);
+  }, [allFeedData, filters, sort]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
