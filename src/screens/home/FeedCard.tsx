@@ -3,7 +3,7 @@
  * Displays gigs in the home feed (MVP: gigs only)
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Image,
   StyleSheet,
@@ -13,6 +13,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../components/design-system/theme/theme';
+import { SourceBadge } from '../../components/composites/SourceBadge';
+import { SourceInfoTooltip } from '../../components/composites/SourceInfoTooltip';
+import type { GigOrigin } from '../../types';
 
 export interface FeedCardData {
   id: string;
@@ -31,6 +34,14 @@ export interface FeedCardData {
   licenseRequired?: boolean;
   requirements?: string[];
   postedDate?: string;
+  // Source attribution (GIG-007)
+  source?: GigOrigin;
+  sourceUrl?: string | null;
+  postedBy?: {
+    userId: string;
+    name: string;
+    photoUrl?: string;
+  };
 }
 
 interface FeedCardProps {
@@ -38,6 +49,7 @@ interface FeedCardProps {
   onPress?: () => void;
   onBookmark?: () => void;
   isBookmarked?: boolean;
+  onProfilePress?: (userId: string) => void;
 }
 
 const getTagStyle = (tag: string) => {
@@ -57,8 +69,9 @@ const getTagStyle = (tag: string) => {
   }
 };
 
-export const FeedCard = ({ data, onPress, onBookmark, isBookmarked }: FeedCardProps) => {
+export const FeedCard = ({ data, onPress, onBookmark, isBookmarked, onProfilePress }: FeedCardProps) => {
   const tagStyle = getTagStyle(data.tag);
+  const [showSourceInfo, setShowSourceInfo] = useState(false);
 
   // MVP: Render gig cards only
   return (
@@ -66,6 +79,27 @@ export const FeedCard = ({ data, onPress, onBookmark, isBookmarked }: FeedCardPr
       style={styles.card}
       onPress={onPress}
       activeOpacity={0.7}>
+      {/* Source Badge (GIG-007) */}
+      {data.source && (
+        <SourceBadge
+          source={data.source}
+          postedBy={data.postedBy}
+          sourceUrl={data.sourceUrl}
+          onPress={() => setShowSourceInfo(true)}
+          onProfilePress={onProfilePress}
+        />
+      )}
+
+      {/* Source Info Tooltip */}
+      {data.source && data.source !== 'user-generated' && (
+        <SourceInfoTooltip
+          source={data.source}
+          sourceUrl={data.sourceUrl}
+          visible={showSourceInfo}
+          onClose={() => setShowSourceInfo(false)}
+        />
+      )}
+
       <View style={styles.cardHeader}>
         <View style={[styles.badge, { backgroundColor: tagStyle.backgroundColor, borderColor: tagStyle.borderColor }]}>
           <Text style={[styles.badgeText, { color: tagStyle.color }]}>{data.tag}</Text>

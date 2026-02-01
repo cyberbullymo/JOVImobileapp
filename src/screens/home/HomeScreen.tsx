@@ -75,6 +75,18 @@ const gigToFeedCard = (gig: Gig): FeedCardData => {
     return 'Anonymous';
   };
 
+  // Build posted by info for user-generated gigs
+  const getPostedBy = () => {
+    if (gig.source === 'user-generated' && gig.postedBy) {
+      return {
+        userId: gig.postedBy,
+        name: gig.founderProfile?.displayName || gig.founderProfile?.businessName || 'Jovi User',
+        photoUrl: gig.founderProfile?.photoURL,
+      };
+    }
+    return undefined;
+  };
+
   return {
     id: gig.id,
     type,
@@ -89,6 +101,10 @@ const gigToFeedCard = (gig: Gig): FeedCardData => {
     licenseRequired: true,
     requirements: gig.profession.map(p => p.charAt(0).toUpperCase() + p.slice(1).replace('-', ' ')),
     postedDate: formatTimeAgo(new Date(gig.createdAt)),
+    // Source attribution (GIG-007)
+    source: gig.source,
+    sourceUrl: gig.sourceUrl,
+    postedBy: getPostedBy(),
   };
 };
 
@@ -226,6 +242,11 @@ const HomeScreen = () => {
     console.log('Card pressed:', item.id);
   };
 
+  const handleProfilePress = (userId: string) => {
+    // Navigate to user profile - implement navigation here
+    console.log('Profile pressed:', userId);
+  };
+
   const renderHeader = () => (
     <View style={styles.headerContent}>
       {/* Greeting */}
@@ -290,6 +311,7 @@ const HomeScreen = () => {
             onPress={() => handleCardPress(item)}
             onBookmark={() => handleBookmark(item.id)}
             isBookmarked={bookmarkedIds.has(item.id)}
+            onProfilePress={handleProfilePress}
           />
         )}
         ListEmptyComponent={
