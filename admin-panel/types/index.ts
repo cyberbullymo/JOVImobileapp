@@ -69,6 +69,7 @@ export interface Gig {
 
   // Compensation
   payRange: PayRange;
+  boothRentCost?: number; // Monthly booth rental cost (for booth-rental gig type)
 
   // Status
   status: "Open" | "Closed" | "Filled";
@@ -98,6 +99,7 @@ export interface CreateGigInput {
   gigType: GigType;
   profession: GigProfession[];
   payRange: PayRange;
+  boothRentCost?: number; // Monthly booth rental cost (for booth-rental gig type)
   source: GigSource;
   sourceUrl?: string;
   qualityScore?: number;

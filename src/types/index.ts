@@ -162,6 +162,7 @@ export interface Gig {
 
   // Compensation
   payRange: PayRange;
+  boothRentCost?: number; // Monthly booth rental cost (for booth-rental gig type)
   compensation?: { // Backward compatibility
     type: 'Hourly' | 'Salary' | 'Commission' | 'Unpaid';
     amount?: number;
@@ -201,6 +202,7 @@ export interface CreateUserGigInput {
   gigType: GigType;
   profession: GigProfession[];
   payRange: PayRange;
+  boothRentCost?: number; // Monthly booth rental cost (for booth-rental gig type)
   requirements?: string[];
   benefits?: string[];
   startDate?: Date;
@@ -214,6 +216,7 @@ export interface CreateAggregatedGigInput {
   gigType: GigType;
   profession: GigProfession[];
   payRange: PayRange;
+  boothRentCost?: number; // Monthly booth rental cost (for booth-rental gig type)
   source: Exclude<GigOrigin, 'user-generated'>;
   sourceUrl: string; // Required for aggregated
   externalId: string; // Required for aggregated

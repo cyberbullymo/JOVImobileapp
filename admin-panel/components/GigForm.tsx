@@ -1,21 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Slider } from "@/components/ui/slider";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+import { GigPreview } from "@/components/GigPreview";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,24 +12,32 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
-import { AddressAutocomplete } from "@/components/AddressAutocomplete";
-import { GigPreview } from "@/components/GigPreview";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/useToast";
-import { validateGigForm, validateSourceUrl, getCharacterCountInfo } from "@/lib/validators";
-import { createGig, updateGig, checkForDuplicates, saveDraft, deleteDraft } from "@/lib/firebase";
+import { checkForDuplicates, createGig, deleteDraft, saveDraft, updateGig } from "@/lib/firebase";
 import { debounce } from "@/lib/utils";
+import { getCharacterCountInfo, validateGigForm, validateSourceUrl } from "@/lib/validators";
 import type {
-  GigFormData,
-  GigProfession,
   Gig,
-  DEFAULT_GIG_DATA,
-  GIG_TYPE_OPTIONS,
-  PROFESSION_OPTIONS,
-  SOURCE_OPTIONS,
-  PAY_TYPE_OPTIONS,
+  GigFormData,
+  GigProfession
 } from "@/types";
-import { Loader2, Save, Send, AlertTriangle, X } from "lucide-react";
+import { AlertTriangle, Loader2, Save, Send } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 
 const GIG_TYPE_OPTIONS_LOCAL = [
   { value: "booth-rental", label: "Booth Rental" },
@@ -114,6 +108,7 @@ export function GigForm({ initialData, isEdit = false, gigId, existingDraftId }:
     qualityScore: initialData?.qualityScore || DEFAULT_GIG_DATA_LOCAL.qualityScore,
     profession: initialData?.profession || [],
     payRange: initialData?.payRange || DEFAULT_GIG_DATA_LOCAL.payRange,
+    boothRentCost: initialData?.boothRentCost,
     location: initialData?.location || DEFAULT_GIG_DATA_LOCAL.location,
     requirements: initialData?.requirements || [],
     benefits: initialData?.benefits || [],
@@ -182,17 +177,29 @@ export function GigForm({ initialData, isEdit = false, gigId, existingDraftId }:
     return () => clearTimeout(timeoutId);
   }, [formData.title, formData.location.city, isEdit, gigId]);
 
-  const handleFieldChange = (field: string, value: unknown) => {
+ const handleFieldChange = (field: string, value: unknown) => {
+  setFormData((prev) => {
+    const newData = { ...prev, [field]: value };
+    
+    // Logic: If we switch AWAY from booth-rental, remove the rent cost
+    if (field === "gigType" && value !== "booth-rental") {
+      delete newData.boothRentCost;
+    }
+    
+    return newData;
+  });
+
+  if (errors[field]) {
+    setErrors(({ [field]: _, ...rest }) => rest);
+  }
+
+if (field === "gigType" && value === "booth-rental") {
     setFormData((prev) => ({
       ...prev,
-      [field]: value,
+      gigType: "booth-rental",
+      // Initialize boothRentCost if switching to booth-rental
+      boothRentCost: prev.boothRentCost || 0,
     }));
-    // Clear error for this field
-    if (errors[field]) {
-      setErrors((prev) => {
-        const { [field]: _, ...rest } = prev;
-        return rest;
-      });
     }
   };
 
@@ -205,15 +212,16 @@ export function GigForm({ initialData, isEdit = false, gigId, existingDraftId }:
     }));
   };
 
-  const handlePayRangeChange = (field: "min" | "max" | "type", value: unknown) => {
-    setFormData((prev) => ({
-      ...prev,
-      payRange: {
-        ...prev.payRange,
-        [field]: field === "type" ? value : Number(value),
-      },
-    }));
-  };
+  const handlePayRangeChange = (field: "min" | "max" | "type", value: string) => {
+  setFormData((prev) => ({
+    ...prev,
+    payRange: {
+      ...prev.payRange,
+      // If value is empty string, store as undefined/null so validation triggers correctly
+      [field]: field === "type" ? value : value === "" ? undefined : Number(value),
+    },
+  }));
+};
 
   const handleLocationSelect = useCallback(
     (
@@ -332,6 +340,7 @@ export function GigForm({ initialData, isEdit = false, gigId, existingDraftId }:
   const titleInfo = getCharacterCountInfo(formData.title, 5, 100);
   const descInfo = getCharacterCountInfo(formData.description, 20, 5000);
 
+  console.log("Validation Errors:", errors);
   return (
     <div className="grid gap-8 lg:grid-cols-5">
       {/* Form */}
@@ -481,59 +490,90 @@ export function GigForm({ initialData, isEdit = false, gigId, existingDraftId }:
             </CardContent>
           </Card>
 
-          {/* Compensation */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Compensation</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
+          {/* Booth Rent Cost (for booth-rental gig type) */}
+          {formData.gigType === "booth-rental" ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Booth Rental Cost</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="payMin">Min Pay ($)</Label>
+                  <Label htmlFor="boothRentCost">
+                    Monthly Rent Cost ($) <span className="text-destructive">*</span>
+                  </Label>
                   <Input
-                    id="payMin"
+                    id="boothRentCost"
                     type="number"
                     min="0"
-                    value={formData.payRange.min || ""}
-                    onChange={(e) => handlePayRangeChange("min", e.target.value)}
-                    placeholder="0"
+                    value={formData.boothRentCost || ""}
+                    onChange={(e) => handleFieldChange("boothRentCost", Number(e.target.value))}
+                    placeholder="e.g., 800"
+                    className={errors.boothRentCost ? "border-destructive" : ""}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Enter the monthly cost for renting this booth/station
+                  </p>
+                  {errors.boothRentCost && (
+                    <p className="text-xs text-destructive">{errors.boothRentCost}</p>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="payMax">Max Pay ($)</Label>
-                  <Input
-                    id="payMax"
-                    type="number"
-                    min="0"
-                    value={formData.payRange.max || ""}
-                    onChange={(e) => handlePayRangeChange("max", e.target.value)}
-                    placeholder="0"
-                  />
+              </CardContent>
+            </Card>
+          ) : (
+            /* Compensation (for non-booth-rental gig types) */
+            <Card>
+              <CardHeader>
+                <CardTitle>Compensation</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="payMin">Min Pay ($)</Label>
+                    <Input
+                      id="payMin"
+                      type="number"
+                      min="0"
+                      value={formData.payRange.min || ""}
+                      onChange={(e) => handlePayRangeChange("min", e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="payMax">Max Pay ($)</Label>
+                    <Input
+                      id="payMax"
+                      type="number"
+                      min="0"
+                      value={formData.payRange.max || ""}
+                      onChange={(e) => handlePayRangeChange("max", e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Pay Type</Label>
+                    <Select
+                      value={formData.payRange.type}
+                      onValueChange={(value) => handlePayRangeChange("type", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAY_TYPE_OPTIONS_LOCAL.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Pay Type</Label>
-                  <Select
-                    value={formData.payRange.type}
-                    onValueChange={(value) => handlePayRangeChange("type", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PAY_TYPE_OPTIONS_LOCAL.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              {errors.payRange && (
-                <p className="text-xs text-destructive">{errors.payRange}</p>
-              )}
-            </CardContent>
-          </Card>
+                {errors.payRange && (
+                  <p className="text-xs text-destructive">{errors.payRange}</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Source Info */}
           <Card>

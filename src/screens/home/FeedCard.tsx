@@ -56,6 +56,8 @@ const getTagStyle = (tag: string) => {
   switch (tag) {
     case 'Paid':
       return { backgroundColor: '#EF6F3C20', color: '#EF6F3C', borderColor: '#EF6F3C40' };
+    case 'Booth':
+      return { backgroundColor: '#0EA5E920', color: '#0EA5E9', borderColor: '#0EA5E940' };
     case 'TFP':
       return { backgroundColor: '#D599FB20', color: '#D599FB', borderColor: '#D599FB40' };
     case 'Apprenticeship':

@@ -25,6 +25,21 @@ import { SortDropdown } from './SortDropdown';
 import { getActiveGigs } from '../../services/firebase/gigService';
 import type { Gig } from '../../types';
 
+// Helper to convert Firestore timestamp to Date
+const toDate = (timestamp: unknown): Date => {
+  if (!timestamp) return new Date();
+  // Handle Firestore Timestamp objects
+  if (typeof timestamp === 'object' && timestamp !== null && 'toDate' in timestamp) {
+    return (timestamp as { toDate: () => Date }).toDate();
+  }
+  // Handle Firestore Timestamp as plain object with seconds
+  if (typeof timestamp === 'object' && timestamp !== null && 'seconds' in timestamp) {
+    return new Date((timestamp as { seconds: number }).seconds * 1000);
+  }
+  // Handle Date objects and date strings
+  return new Date(timestamp as string | number | Date);
+};
+
 // Helper to format time ago
 const formatTimeAgo = (date: Date): string => {
   const now = new Date();
@@ -45,7 +60,9 @@ const gigToFeedCard = (gig: Gig): FeedCardData => {
   let tag = 'Paid';
   let type: FeedCardData['type'] = 'gig';
 
-  if (gig.gigType === 'tfp') {
+  if (gig.gigType === 'booth-rental') {
+    tag = 'Booth';
+  } else if (gig.gigType === 'tfp') {
     tag = 'TFP';
     type = 'tfp';
   } else if (gig.gigType === 'apprenticeship') {
@@ -58,6 +75,13 @@ const gigToFeedCard = (gig: Gig): FeedCardData => {
 
   // Format pay rate
   const formatRate = (): string => {
+    if (gig.gigType === 'booth-rental') {
+      // Display booth rent cost if available
+      if (gig.boothRentCost) {
+        return `$${gig.boothRentCost}/mo rent`;
+      }
+      return 'Booth Rental';
+    }
     if (gig.gigType === 'tfp') return 'Trade for Portfolio';
     if (gig.gigType === 'apprenticeship') return 'Learning Opportunity';
     const { min, max, type: payType } = gig.payRange;
@@ -100,7 +124,7 @@ const gigToFeedCard = (gig: Gig): FeedCardData => {
     experienceLevel: 'All Levels',
     licenseRequired: true,
     requirements: gig.profession.map(p => p.charAt(0).toUpperCase() + p.slice(1).replace('-', ' ')),
-    postedDate: formatTimeAgo(new Date(gig.createdAt)),
+    postedDate: formatTimeAgo(toDate(gig.createdAt)),
     // Source attribution (GIG-007)
     source: gig.source,
     sourceUrl: gig.sourceUrl,

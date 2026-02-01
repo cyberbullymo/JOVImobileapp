@@ -1,4 +1,4 @@
-import type { CreateGigInput, ValidationError, GigFormData } from "@/types";
+import type { GigFormData, ValidationError } from "@/types";
 
 export function validateGigForm(data: GigFormData): ValidationError[] {
   const errors: ValidationError[] = [];
@@ -34,15 +34,25 @@ export function validateGigForm(data: GigFormData): ValidationError[] {
     errors.push({ field: "profession", message: "At least one profession must be selected" });
   }
 
-  // Pay range validation
-  if (data.payRange.min < 0) {
-    errors.push({ field: "payRange", message: "Minimum pay cannot be negative" });
-  }
-  if (data.payRange.max < data.payRange.min) {
-    errors.push({ field: "payRange", message: "Maximum pay must be greater than minimum" });
-  }
-  if (data.payRange.max === 0 && data.payRange.min === 0) {
-    errors.push({ field: "payRange", message: "Pay range is required" });
+  // 5. CONDITIONAL VALIDATION: Booth Rental vs. Pay Range
+  if (data.gigType === "booth-rental") {
+    // Check booth rent
+    if (data.boothRentCost === undefined || data.boothRentCost === null || data.boothRentCost === 0) {
+      errors.push({ field: "boothRentCost", message: "Booth rental cost is required" });
+    } else if (data.boothRentCost < 0) {
+      errors.push({ field: "boothRentCost", message: "Booth rental cost cannot be negative" });
+    }
+  } else {
+    // Check standard pay range
+    if (data.payRange.min < 0) {
+      errors.push({ field: "payRange", message: "Minimum pay cannot be negative" });
+    }
+    if (data.payRange.max < data.payRange.min) {
+      errors.push({ field: "payRange", message: "Maximum pay must be greater than minimum" });
+    }
+    if (data.payRange.max === 0 && data.payRange.min === 0) {
+      errors.push({ field: "payRange", message: "Pay range is required" });
+    }
   }
 
   // Source URL validation
