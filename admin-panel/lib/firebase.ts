@@ -25,6 +25,7 @@ import {
   Firestore,
 } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL, FirebaseStorage } from "firebase/storage";
+import { getFunctions, httpsCallable, Functions } from "firebase/functions";
 import type { Gig, CreateGigInput, GigFilters, GigSourceConfig, CurationStats } from "@/types";
 
 const firebaseConfig = {
@@ -41,15 +42,17 @@ let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
 let storage: FirebaseStorage;
+let functions: Functions;
 
 if (typeof window !== "undefined") {
   app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
   auth = getAuth(app);
   db = getFirestore(app);
   storage = getStorage(app);
+  functions = getFunctions(app);
 }
 
-export { auth, db, storage };
+export { auth, db, storage, functions };
 
 // Auth functions
 export async function signIn(email: string, password: string) {
@@ -431,4 +434,110 @@ export function exportGigsToCSV(gigs: Gig[]): string {
   ]);
 
   return [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
+}
+
+// ============================================================================
+// AI Quality Scoring (GIG-010)
+// ============================================================================
+
+export interface ScoreGigResult {
+  gigId: string;
+  score: number;
+  reasoning: string;
+  breakdown: {
+    completeness: number;
+    professionalism: number;
+    studentRelevance: number;
+    actionability: number;
+  };
+  success: boolean;
+}
+
+export interface BatchScoreResult {
+  results: Array<{
+    gigId: string;
+    score?: number;
+    success: boolean;
+    error?: string;
+  }>;
+  summary: {
+    total: number;
+    success: number;
+    failed: number;
+  };
+}
+
+/**
+ * Score a single gig using Claude AI
+ */
+export async function scoreGig(gigId: string): Promise<ScoreGigResult> {
+  const scoreGigFn = httpsCallable<{ gigId: string }, ScoreGigResult>(
+    functions,
+    "scoreGig"
+  );
+  const result = await scoreGigFn({ gigId });
+  return result.data;
+}
+
+/**
+ * Batch score multiple gigs using Claude AI
+ */
+export async function batchScoreGigs(gigIds: string[]): Promise<BatchScoreResult> {
+  const batchScoreFn = httpsCallable<{ gigIds: string[] }, BatchScoreResult>(
+    functions,
+    "batchScoreGigs"
+  );
+  const result = await batchScoreFn({ gigIds });
+  return result.data;
+}
+
+/**
+ * Get gigs pending manual review (low score)
+ */
+export interface GigReview {
+  id: string;
+  gigId: string;
+  gigTitle: string;
+  score: number;
+  scoringBreakdown?: {
+    completeness: number;
+    professionalism: number;
+    studentRelevance: number;
+    actionability: number;
+  };
+  reason: string;
+  createdAt: Date;
+  reviewed: boolean;
+  reviewedBy?: string;
+  reviewedAt?: Date;
+  action?: "approved" | "edited" | "deactivated";
+}
+
+export async function getReviewQueue(): Promise<GigReview[]> {
+  const q = query(
+    collection(db, "gigReviewQueue"),
+    where("reviewed", "==", false),
+    orderBy("createdAt", "desc"),
+    limit(50)
+  );
+
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((doc) => {
+    const data = convertTimestamps(doc.data());
+    return { id: doc.id, ...data } as GigReview;
+  });
+}
+
+/**
+ * Complete a review action
+ */
+export async function completeReview(
+  reviewId: string,
+  action: "approved" | "edited" | "deactivated"
+): Promise<void> {
+  const completeReviewFn = httpsCallable<
+    { reviewId: string; action: string },
+    { success: boolean }
+  >(functions, "completeReview");
+  await completeReviewFn({ reviewId, action });
 }

@@ -46,6 +46,32 @@ export interface PayRange {
   type: PayType;
 }
 
+// AI Quality Scoring (GIG-010)
+export interface ScoringBreakdown {
+  completeness: number;
+  professionalism: number;
+  studentRelevance: number;
+  actionability: number;
+}
+
+export interface ScoringResult {
+  score: number;
+  reasoning: string;
+  breakdown: ScoringBreakdown;
+}
+
+export interface GigReview {
+  id: string;
+  gigId: string;
+  score: number;
+  reason: string;
+  createdAt: Date;
+  reviewed: boolean;
+  reviewedBy?: string;
+  reviewedAt?: Date;
+  action?: "approved" | "edited" | "deactivated";
+}
+
 export interface Gig {
   id: string;
   gigId: string;
@@ -84,6 +110,12 @@ export interface Gig {
   qualityScore: number;
   viewCount: number;
   applicationCount: number;
+
+  // AI Scoring Details (GIG-010)
+  scoringBreakdown?: ScoringBreakdown;
+  scoringReasoning?: string;
+  scoredAt?: Date;
+  scoringError?: string;
 
   // Optional fields
   requirements?: string[];

@@ -5,6 +5,8 @@
 
 import React, { useState, useEffect } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Dimensions,
   Modal,
   Pressable,
@@ -18,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../components/design-system/theme/theme';
+import { useLocationPermission } from '../../hooks/useLocationPermission';
 import {
   useFeedStore,
   FeedFilters,
@@ -99,7 +102,9 @@ export const FilterModal = () => {
     closeFilterModal,
     applyFilters,
     clearAllFilters,
+    setUserLocation,
   } = useFeedStore();
+  const { getCurrentLocation, isLoading: locationLoading } = useLocationPermission();
 
   // Local state for editing filters before applying
   const [localFilters, setLocalFilters] = useState<FeedFilters>(filters);
@@ -153,6 +158,29 @@ export const FilterModal = () => {
         enabled: !prev.location.enabled,
       },
     }));
+  };
+
+  // GIG-009: Handle "Use current location" button
+  const handleUseCurrentLocation = async () => {
+    const coords = await getCurrentLocation();
+    if (coords) {
+      setUserLocation({
+        lat: coords.lat,
+        lng: coords.lng,
+        timestamp: Date.now(),
+      });
+      // Enable location filter automatically
+      setLocalFilters((prev) => ({
+        ...prev,
+        location: { ...prev.location, enabled: true },
+      }));
+    } else {
+      Alert.alert(
+        'Location Error',
+        'Unable to get your location. Please check your location permissions in Settings.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const setLocationRadius = (radius: number) => {
@@ -253,6 +281,22 @@ export const FilterModal = () => {
                 isSelected={localFilters.location.enabled}
                 onToggle={toggleLocation}
               />
+              {/* GIG-009: Use current location button */}
+              <TouchableOpacity
+                style={styles.locationButton}
+                onPress={handleUseCurrentLocation}
+                disabled={locationLoading}
+                activeOpacity={0.7}
+              >
+                {locationLoading ? (
+                  <ActivityIndicator size="small" color={COLORS.primary} />
+                ) : (
+                  <Ionicons name="navigate" size={18} color={COLORS.primary} />
+                )}
+                <Text style={styles.locationButtonText}>
+                  {locationLoading ? 'Getting location...' : 'Use current location'}
+                </Text>
+              </TouchableOpacity>
               {localFilters.location.enabled && (
                 <View style={styles.sliderContainer}>
                   <Text style={styles.sliderLabel}>
@@ -447,6 +491,21 @@ const styles = StyleSheet.create({
   radioLabel: {
     fontSize: 15,
     color: theme.colors.text.primary,
+  },
+  locationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: 12,
+    backgroundColor: COLORS.activeBackground,
+    borderRadius: 8,
+  },
+  locationButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.primary,
   },
   sliderContainer: {
     marginTop: 16,

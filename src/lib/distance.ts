@@ -1,3 +1,11 @@
+/**
+ * Distance Calculation Utilities
+ * Functions for calculating distances between coordinates
+ * GIG-009: Location-Based Filtering
+ */
+
+import type { Gig } from '../types';
+
 export function calculateDistance(
   lat1: number,
   lon1: number,
@@ -28,8 +36,12 @@ export function filterGigsByDistance(
   userLat: number,
   userLng: number,
   maxDistanceMiles: number
-): Gig[] {
+): (Gig & { distance: number })[] {
   return gigs
+    // Filter out gigs without lat/lng
+    .filter((gig): gig is Gig & { location: { lat: number; lng: number; city: string; state: string } } =>
+      gig.location.lat !== undefined && gig.location.lng !== undefined
+    )
     .map(gig => ({
       ...gig,
       distance: calculateDistance(

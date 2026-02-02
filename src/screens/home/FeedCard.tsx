@@ -16,6 +16,7 @@ import { theme } from '../../components/design-system/theme/theme';
 import { SourceBadge } from '../../components/composites/SourceBadge';
 import { SourceInfoTooltip } from '../../components/composites/SourceInfoTooltip';
 import { ApplyButton } from '../../components/composites/ApplyButton';
+import { QualityBadge } from '../../components/composites/QualityBadge';
 import type { GigOrigin } from '../../types';
 
 export interface FeedCardData {
@@ -43,6 +44,8 @@ export interface FeedCardData {
     name: string;
     photoUrl?: string;
   };
+  // AI Quality Score (GIG-010)
+  qualityScore?: number;
 }
 
 interface FeedCardProps {
@@ -132,6 +135,10 @@ export const FeedCard = ({
           )}
         </View>
         <View style={styles.headerRight}>
+          {/* Quality Score Badge (GIG-010) */}
+          {data.qualityScore !== undefined && data.qualityScore > 0 && (
+            <QualityBadge score={data.qualityScore} size="small" />
+          )}
           {data.rating && (
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={15} color="#AFAB23" />

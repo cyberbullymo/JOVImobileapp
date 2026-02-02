@@ -31,6 +31,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { formatDate, truncate } from "@/lib/utils";
+import { QualityBadge } from "@/components/QualityBadge";
 import type { Gig } from "@/types";
 import {
   MoreHorizontal,
@@ -39,7 +40,8 @@ import {
   PowerOff,
   Trash2,
   ExternalLink,
-  Star,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 
 interface GigTableProps {
@@ -49,6 +51,8 @@ interface GigTableProps {
   onDeactivate: (id: string) => void;
   onReactivate: (id: string) => void;
   onDelete: (id: string) => void;
+  onScore?: (id: string) => Promise<void>;
+  scoringId?: string | null; // ID of gig currently being scored
 }
 
 const sourceColors: Record<string, "default" | "secondary" | "outline"> = {
@@ -66,6 +70,8 @@ export function GigTable({
   onDeactivate,
   onReactivate,
   onDelete,
+  onScore,
+  scoringId,
 }: GigTableProps) {
   const [deleteGigId, setDeleteGigId] = useState<string | null>(null);
 
@@ -182,11 +188,20 @@ export function GigTable({
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center justify-center gap-1">
-                    <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
-                    <span className="text-sm font-medium">
-                      {gig.qualityScore}
-                    </span>
+                  <div className="flex items-center justify-center">
+                    {scoringId === gig.id ? (
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <span className="text-xs">Scoring...</span>
+                      </div>
+                    ) : (
+                      <QualityBadge
+                        score={gig.qualityScore}
+                        breakdown={gig.scoringBreakdown}
+                        reasoning={gig.scoringReasoning}
+                        scoredAt={gig.scoredAt}
+                      />
+                    )}
                   </div>
                 </TableCell>
                 <TableCell>
@@ -213,6 +228,19 @@ export function GigTable({
                           Edit
                         </Link>
                       </DropdownMenuItem>
+                      {onScore && (
+                        <DropdownMenuItem
+                          onClick={() => onScore(gig.id)}
+                          disabled={scoringId === gig.id}
+                        >
+                          {scoringId === gig.id ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-4 w-4 mr-2" />
+                          )}
+                          Score with AI
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuSeparator />
                       {gig.isActive ? (
                         <DropdownMenuItem onClick={() => onDeactivate(gig.id)}>

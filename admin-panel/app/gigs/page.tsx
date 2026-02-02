@@ -33,6 +33,8 @@ import {
   bulkDeactivateGigs,
   bulkDeleteGigs,
   exportGigsToCSV,
+  scoreGig,
+  batchScoreGigs,
 } from "@/lib/firebase";
 import type { Gig, GigFilters, GigSource, GigProfession } from "@/types";
 import {
@@ -42,6 +44,8 @@ import {
   PowerOff,
   Trash2,
   RefreshCw,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import { debounce } from "@/lib/utils";
 
@@ -85,6 +89,8 @@ export default function GigsListPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showBulkDeactivateDialog, setShowBulkDeactivateDialog] = useState(false);
+  const [scoringId, setScoringId] = useState<string | null>(null);
+  const [isBatchScoring, setIsBatchScoring] = useState(false);
 
   // Filters
   const [filters, setFilters] = useState<FormFilters>({
@@ -224,6 +230,49 @@ export default function GigsListPage() {
     });
   };
 
+  const handleScore = async (id: string) => {
+    try {
+      setScoringId(id);
+      const result = await scoreGig(id);
+      await loadGigs();
+      toast({
+        title: "Gig scored",
+        description: `Quality score: ${result.score}/10`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to score gig. Make sure Cloud Functions are deployed.",
+        variant: "destructive",
+      });
+    } finally {
+      setScoringId(null);
+    }
+  };
+
+  const handleBatchScore = async () => {
+    if (selectedIds.length === 0) return;
+
+    try {
+      setIsBatchScoring(true);
+      const result = await batchScoreGigs(selectedIds);
+      await loadGigs();
+      setSelectedIds([]);
+      toast({
+        title: "Batch scoring complete",
+        description: `${result.summary.success}/${result.summary.total} gigs scored successfully`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to batch score gigs. Make sure Cloud Functions are deployed.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsBatchScoring(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -342,6 +391,19 @@ export default function GigsListPage() {
                 <Download className="h-4 w-4 mr-2" />
                 Export Selected
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBatchScore}
+                disabled={isBatchScoring}
+              >
+                {isBatchScoring ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4 mr-2" />
+                )}
+                {isBatchScoring ? "Scoring..." : "Score with AI"}
+              </Button>
             </div>
             <Button
               variant="ghost"
@@ -379,6 +441,8 @@ export default function GigsListPage() {
             onDeactivate={handleDeactivate}
             onReactivate={handleReactivate}
             onDelete={handleDelete}
+            onScore={handleScore}
+            scoringId={scoringId}
           />
         )}
 

@@ -35,6 +35,7 @@ const SORT_DESCRIPTIONS: Record<SortMethod, string> = {
   popular: 'Most engagement',
   trending: 'Gaining momentum',
   relevant: 'Personalized for you',
+  distance: 'Closest to you',
 };
 
 // Sort method icons
@@ -43,6 +44,7 @@ const SORT_ICONS: Record<SortMethod, keyof typeof Ionicons.glyphMap> = {
   popular: 'heart-outline',
   trending: 'trending-up-outline',
   relevant: 'sparkles-outline',
+  distance: 'location-outline',
 };
 
 interface SortOptionProps {
@@ -86,10 +88,16 @@ export const SortDropdown = () => {
   const insets = useSafeAreaInsets();
   const {
     sort,
+    filters,
     isSortDropdownVisible,
     closeSortDropdown,
     setSortMethod,
   } = useFeedStore();
+
+  // Only show distance sort when location filter is enabled
+  const availableMethods = (Object.keys(SORT_LABELS) as SortMethod[]).filter(
+    (method) => method !== 'distance' || filters.location.enabled
+  );
 
   const handleSelect = (method: SortMethod) => {
     setSortMethod(method);
@@ -119,14 +127,14 @@ export const SortDropdown = () => {
 
           {/* Sort Options */}
           <View style={styles.optionsContainer}>
-            {(Object.keys(SORT_LABELS) as SortMethod[]).map((method, index) => (
+            {availableMethods.map((method, index) => (
               <React.Fragment key={method}>
                 <SortOption
                   method={method}
                   isSelected={sort.method === method}
                   onSelect={() => handleSelect(method)}
                 />
-                {index < Object.keys(SORT_LABELS).length - 1 && (
+                {index < availableMethods.length - 1 && (
                   <View style={styles.divider} />
                 )}
               </React.Fragment>

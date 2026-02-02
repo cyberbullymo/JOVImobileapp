@@ -9,8 +9,14 @@ import { create } from 'zustand';
 export type ContentType = 'gigs';
 export type UserTypeFilter = 'future_pro' | 'licensed_pro' | 'founder';
 export type DatePosted = 'today' | 'week' | 'month' | 'all';
-export type SortMethod = 'recent' | 'popular' | 'trending' | 'relevant';
+export type SortMethod = 'recent' | 'popular' | 'trending' | 'relevant' | 'distance';
 export type Category = 'hair' | 'nails' | 'skin' | 'makeup' | 'barbering' | 'esthetics' | 'other';
+
+export interface UserLocation {
+  lat: number;
+  lng: number;
+  timestamp: number; // For 5-minute cache
+}
 
 export interface FeedFilters {
   contentTypes: ContentType[];
@@ -30,9 +36,15 @@ export interface FeedSort {
 interface FeedState {
   filters: FeedFilters;
   sort: FeedSort;
+  userLocation: UserLocation | null;
   isFilterModalVisible: boolean;
   isSortDropdownVisible: boolean;
   isLoading: boolean;
+
+  // Location actions
+  setUserLocation: (location: UserLocation | null) => void;
+  clearUserLocation: () => void;
+  isLocationCacheValid: () => boolean;
 
   // Filter actions
   setContentTypes: (types: ContentType[]) => void;
@@ -81,9 +93,22 @@ const defaultSort: FeedSort = {
 export const useFeedStore = create<FeedState>((set, get) => ({
   filters: defaultFilters,
   sort: defaultSort,
+  userLocation: null,
   isFilterModalVisible: false,
   isSortDropdownVisible: false,
   isLoading: false,
+
+  // Location actions
+  setUserLocation: (location) => set({ userLocation: location }),
+
+  clearUserLocation: () => set({ userLocation: null }),
+
+  isLocationCacheValid: () => {
+    const { userLocation } = get();
+    if (!userLocation) return false;
+    const fiveMinutes = 5 * 60 * 1000;
+    return Date.now() - userLocation.timestamp < fiveMinutes;
+  },
 
   // Filter actions
   setContentTypes: (types) =>
@@ -220,6 +245,7 @@ export const SORT_LABELS: Record<SortMethod, string> = {
   popular: 'Popular',
   trending: 'Trending',
   relevant: 'Relevant',
+  distance: 'Nearest',
 };
 
 // Content type labels (MVP: gigs only)

@@ -132,6 +132,38 @@ export interface PayRange {
   type: PayType;
 }
 
+// ============================================================================
+// AI QUALITY SCORING TYPES (GIG-010)
+// ============================================================================
+
+// Breakdown of AI scoring criteria
+export interface ScoringBreakdown {
+  completeness: number; // 1-10: Has all necessary info
+  professionalism: number; // 1-10: Well-written, professional tone
+  studentRelevance: number; // 1-10: Appropriate for students/early-career
+  actionability: number; // 1-10: Clear application instructions
+}
+
+// Result from Claude API scoring
+export interface ScoringResult {
+  score: number; // 1-10 overall score
+  reasoning: string; // Brief explanation
+  breakdown: ScoringBreakdown;
+}
+
+// Manual review queue for low-scoring gigs
+export interface GigReview {
+  id: string;
+  gigId: string;
+  score: number;
+  reason: string;
+  createdAt: Date;
+  reviewed: boolean;
+  reviewedBy?: string;
+  reviewedAt?: Date;
+  action?: 'approved' | 'edited' | 'deactivated';
+}
+
 // Main Gig interface - supports both user-generated and aggregated gigs
 export interface Gig {
   // Core identifiers
@@ -191,6 +223,12 @@ export interface Gig {
   viewCount: number; // Tracking metric for gig visibility
   applicationCount: number; // Tracking metric for conversion
   applicantCount?: number; // Alias for applicationCount (backward compat)
+
+  // AI Scoring Details (GIG-010)
+  scoringBreakdown?: ScoringBreakdown;
+  scoringReasoning?: string;
+  scoredAt?: Date;
+  scoringError?: string;
 }
 
 // Type for creating a new user-generated gig

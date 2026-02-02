@@ -29,6 +29,8 @@ import {
   markAsApplied,
 } from '../../services/firebase/applicationService';
 import { showAppliedToast } from '../../lib/markAppliedPrompt';
+import { useLocationPermission } from '../../hooks/useLocationPermission';
+import { calculateDistance } from '../../lib/distance';
 import type { Gig } from '../../types';
 
 // Helper to convert Firestore timestamp to Date
@@ -61,7 +63,7 @@ const formatTimeAgo = (date: Date): string => {
 };
 
 // Helper to convert Gig to FeedCardData
-const gigToFeedCard = (gig: Gig): FeedCardData => {
+const gigToFeedCard = (gig: Gig, userLat?: number, userLng?: number): FeedCardData => {
   // Determine tag based on gig type
   let tag = 'Paid';
   let type: FeedCardData['type'] = 'gig';
@@ -117,6 +119,13 @@ const gigToFeedCard = (gig: Gig): FeedCardData => {
     return undefined;
   };
 
+  // Calculate distance if user location available (GIG-009)
+  let distance: string | undefined;
+  if (userLat !== undefined && userLng !== undefined && gig.location.lat && gig.location.lng) {
+    const distanceMiles = calculateDistance(userLat, userLng, gig.location.lat, gig.location.lng);
+    distance = `${distanceMiles.toFixed(1)} mi`;
+  }
+
   return {
     id: gig.id,
     type,
@@ -135,6 +144,10 @@ const gigToFeedCard = (gig: Gig): FeedCardData => {
     source: gig.source,
     sourceUrl: gig.sourceUrl,
     postedBy: getPostedBy(),
+    // Distance from user (GIG-009)
+    distance,
+    // Quality score (GIG-010)
+    qualityScore: gig.qualityScore,
   };
 };
 
@@ -162,7 +175,8 @@ const mapAuthorTypeToUserType = (authorType: string): string => {
 const HomeScreen = () => {
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
-  const { filters, sort, isLoading } = useFeedStore();
+  const { filters, sort, isLoading, userLocation, setUserLocation, isLocationCacheValid } = useFeedStore();
+  const { getCurrentLocation } = useLocationPermission();
   const [refreshing, setRefreshing] = useState(false);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [appliedGigIds, setAppliedGigIds] = useState<Set<string>>(new Set());
@@ -175,7 +189,10 @@ const HomeScreen = () => {
     try {
       setError(null);
       const activeGigs = await getActiveGigs({ limitCount: 50 });
-      const feedCards = activeGigs.map(gigToFeedCard);
+      // Convert to FeedCardData with distance if location available (GIG-009)
+      const feedCards = activeGigs.map((gig) =>
+        gigToFeedCard(gig, userLocation?.lat, userLocation?.lng)
+      );
       setGigs(feedCards);
     } catch (err) {
       console.error('Failed to fetch gigs:', err);
@@ -194,11 +211,29 @@ const HomeScreen = () => {
     }
   };
 
-  // Fetch gigs and applied status on mount
+  // Fetch gigs and applied status on mount or when user location changes
   useEffect(() => {
     fetchGigs();
     fetchAppliedGigs();
-  }, [user?.id]);
+  }, [user?.id, userLocation]);
+
+  // Fetch user location when location filter is enabled (GIG-009)
+  useEffect(() => {
+    const fetchLocation = async () => {
+      if (filters.location.enabled && !isLocationCacheValid()) {
+        const coords = await getCurrentLocation();
+        if (coords) {
+          setUserLocation({
+            lat: coords.lat,
+            lng: coords.lng,
+            timestamp: Date.now(),
+          });
+        }
+      }
+    };
+
+    fetchLocation();
+  }, [filters.location.enabled]);
 
   // MVP: Only show gigs (no discussions/community content)
   const allFeedData = useMemo(() => {
@@ -221,6 +256,18 @@ const HomeScreen = () => {
       data = data.filter((item) =>
         filters.userTypes.includes(mapAuthorTypeToUserType(item.authorType) as any)
       );
+    }
+
+    // Apply location filter (GIG-009)
+    if (filters.location.enabled && userLocation) {
+      data = data.filter((item) => {
+        if (!item.distance) return false;
+        // Parse distance from "X.X mi" string
+        const distanceMatch = item.distance.match(/^([\d.]+)/);
+        if (!distanceMatch) return false;
+        const distanceMiles = parseFloat(distanceMatch[1]);
+        return distanceMiles <= filters.location.radiusMiles;
+      });
     }
 
     // Apply date filter (simplified for demo - would use actual timestamps in production)
@@ -258,10 +305,20 @@ const HomeScreen = () => {
           return (priority[b.type] || 0) - (priority[a.type] || 0);
         });
         break;
+      case 'distance':
+        // GIG-009: Sort by distance (nearest first)
+        data.sort((a, b) => {
+          const aMatch = a.distance?.match(/^([\d.]+)/);
+          const bMatch = b.distance?.match(/^([\d.]+)/);
+          const aDist = aMatch ? parseFloat(aMatch[1]) : Infinity;
+          const bDist = bMatch ? parseFloat(bMatch[1]) : Infinity;
+          return aDist - bDist;
+        });
+        break;
     }
 
     return data;
-  }, [allFeedData, filters, sort]);
+  }, [allFeedData, filters, sort, userLocation]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -407,10 +464,21 @@ const HomeScreen = () => {
         )}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name={error ? "alert-circle-outline" : "search-outline"} size={48} color="#9CA3AF" />
-            <Text style={styles.emptyTitle}>{error || 'No results found'}</Text>
+            <Ionicons
+              name={error ? "alert-circle-outline" : filters.location.enabled ? "location-outline" : "search-outline"}
+              size={48}
+              color="#9CA3AF"
+            />
+            <Text style={styles.emptyTitle}>
+              {error || (filters.location.enabled ? 'No gigs nearby' : 'No results found')}
+            </Text>
             <Text style={styles.emptyText}>
-              {error ? 'Pull down to try again' : 'Try adjusting your filters to see more content'}
+              {error
+                ? 'Pull down to try again'
+                : filters.location.enabled
+                  ? `No gigs found within ${filters.location.radiusMiles} miles. Try expanding your search radius.`
+                  : 'Try adjusting your filters to see more content'
+              }
             </Text>
           </View>
         }

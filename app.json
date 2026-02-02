@@ -10,7 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.wilsmo23.JoviApp"
+      "bundleIdentifier": "com.wilsmo23.JoviApp",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "JoviApp needs your location to show gigs near you."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -38,6 +41,12 @@
           "dark": {
             "backgroundColor": "#000000"
           }
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "JoviApp needs your location to show gigs near you."
         }
       ]
     ],
