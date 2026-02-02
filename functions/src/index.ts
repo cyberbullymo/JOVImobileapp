@@ -1,5 +1,5 @@
 /**
- * Firebase Cloud Functions for JoviApp
+ * Firebase Cloud Functions for JOVIAPP_react
  *
  * Export all Cloud Functions from this file.
  * Functions are automatically deployed based on exports.

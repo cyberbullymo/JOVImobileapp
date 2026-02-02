@@ -1,7 +1,7 @@
 {
   "name": "jovi-functions",
   "version": "1.0.0",
-  "description": "Firebase Cloud Functions for JoviApp",
+  "description": "Firebase Cloud Functions for JOVIAPP_react",
   "scripts": {
     "lint": "eslint --ext .js,.ts .",
     "build": "tsc",

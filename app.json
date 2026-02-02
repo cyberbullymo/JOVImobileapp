@@ -1,18 +1,18 @@
 {
   "expo": {
-    "name": "JoviApp",
-    "slug": "JoviApp",
+    "name": "JOVIAPP_react",
+    "slug": "JOVIAPP_react",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "joviapp",
+    "scheme": "joviapp_react",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.wilsmo23.JoviApp",
+      "bundleIdentifier": "com.wilsmo23.JOVIAPPreact",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "JoviApp needs your location to show gigs near you."
+        "NSLocationWhenInUseUsageDescription": "JOVIAPP needs your location to show gigs near you."
       }
     },
     "android": {
@@ -24,7 +24,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.wilsmo23.JoviApp"
+      "package": "com.wilsmo23.JOVIAPPreact"
     },
     "web": {
       "output": "static",
@@ -46,7 +46,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "JoviApp needs your location to show gigs near you."
+          "locationWhenInUsePermission": "JOVIAPP needs your location to show gigs near you."
         }
       ]
     ],
